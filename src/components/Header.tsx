@@ -1,6 +1,8 @@
-import { FileArchive, Zap, Shield, ArrowRight, Lock, WifiOff, FolderTree, FileText, Folder, Apple, Monitor, Ban } from 'lucide-react';
+import { FileArchive, Zap, Shield, ArrowRight, Lock, WifiOff, FolderTree, FileText, Folder, Apple, Monitor, Ban, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || '맥윈집';
 
@@ -9,6 +11,7 @@ interface HeaderProps {
 }
 
 export function Header({ hideExample = false }: HeaderProps) {
+  const { canInstall, install } = usePWAInstall();
   return (
     <header className="text-center mb-10 animate-fadeIn">
       {/* Logo */}
@@ -57,6 +60,20 @@ export function Header({ hideExample = false }: HeaderProps) {
           광고 없음
         </Badge>
       </div>
+
+      {/* Install button */}
+      {canInstall && (
+        <div className="mt-6 animate-fadeIn">
+          <Button
+            onClick={install}
+            variant="outline"
+            className="gap-2 border-primary/30 hover:border-primary hover:bg-primary/5"
+          >
+            <Download className="w-4 h-4" />
+            데스크탑에 설치
+          </Button>
+        </div>
+      )}
 
       {/* Example - hidden when files are added */}
       {!hideExample && (
