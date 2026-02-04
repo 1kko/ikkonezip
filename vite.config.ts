@@ -1,20 +1,33 @@
 import path from "path"
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { createHtmlPlugin } from 'vite-plugin-html'
 
-export default defineConfig({
-  plugins: [
-    react(),
-    tailwindcss(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon-180x180.png'],
-      manifest: {
-        name: '맥윈집 - 한글 파일명 정규화 & 압축',
-        short_name: '맥윈집',
-        description: '맥에서 만든 파일의 한글 파일명을 윈도우 호환 형식으로 변환하여 압축합니다 (NFD→NFC)',
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const appName = env.VITE_APP_NAME || '맥윈집'
+
+  return {
+    plugins: [
+      react(),
+      tailwindcss(),
+      createHtmlPlugin({
+        inject: {
+          data: {
+            appName,
+            title: `${appName} - 한글 파일명 정규화 & 압축`,
+          },
+        },
+      }),
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon-180x180.png'],
+        manifest: {
+          name: `${appName} - 한글 파일명 정규화 & 압축`,
+          short_name: appName,
+          description: '맥에서 만든 파일의 한글 파일명을 윈도우 호환 형식으로 변환하여 압축합니다 (NFD→NFC)',
         theme_color: '#7c3aed',
         background_color: '#0f0f23',
         display: 'standalone',
@@ -62,10 +75,11 @@ export default defineConfig({
         ]
       }
     })
-  ],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+    ],
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
     },
-  },
+  }
 })
