@@ -36,20 +36,12 @@ export function Header({ hideExample = false }: HeaderProps) {
       {/* Feature badges */}
       <div className="flex items-center justify-center gap-2 mt-6 flex-wrap max-w-md mx-auto">
         <Badge variant="secondary" className="gap-1.5">
-          <Zap className="w-3 h-3" />
-          NFD → NFC 변환
-        </Badge>
-        <Badge variant="secondary" className="gap-1.5">
           <Shield className="w-3 h-3" />
           100% 브라우저 처리
         </Badge>
         <Badge variant="secondary" className="gap-1.5">
           <Lock className="w-3 h-3" />
-          개인정보 보호
-        </Badge>
-        <Badge variant="secondary" className="gap-1.5">
-          <FolderTree className="w-3 h-3" />
-          폴더 구조 유지
+          트래킹 없음
         </Badge>
         <Badge variant="secondary" className="gap-1.5">
           <WifiOff className="w-3 h-3" />
@@ -58,6 +50,14 @@ export function Header({ hideExample = false }: HeaderProps) {
         <Badge variant="secondary" className="gap-1.5">
           <Ban className="w-3 h-3" />
           광고 없음
+        </Badge>
+        <Badge variant="secondary" className="gap-1.5">
+          <Zap className="w-3 h-3" />
+          NFD → NFC 변환
+        </Badge>
+        <Badge variant="secondary" className="gap-1.5">
+          <FolderTree className="w-3 h-3" />
+          폴더 구조 유지
         </Badge>
       </div>
 
