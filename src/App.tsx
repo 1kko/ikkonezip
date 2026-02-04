@@ -4,6 +4,7 @@ import { Header } from '@/components/Header';
 import { FileUploader } from '@/components/FileUploader';
 import { FileList } from '@/components/FileList';
 import { DownloadButton } from '@/components/DownloadButton';
+import { Footer } from '@/components/Footer';
 import { useFileProcessor } from '@/hooks/useFileProcessor';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -79,6 +80,7 @@ function App() {
           <p className="mt-4 text-xs text-muted-foreground">
             모든 처리는 브라우저에서 이루어지며, 파일이 서버로 업로드되지 않습니다.
           </p>
+          <Footer />
         </footer>
       </div>
     </div>
