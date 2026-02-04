@@ -55,7 +55,7 @@ npm run preview
 
 ```bash
 docker build -t ikkonezip .
-docker run -p 3000:80 ikkonezip
+docker run -p 3000:3000 ikkonezip
 ```
 
 ## 환경 변수
