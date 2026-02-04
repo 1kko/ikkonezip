@@ -8,6 +8,8 @@ export interface FileWithPath {
 
 export interface ZipOptions {
   password?: string;
+  compressionLevel?: number; // 0 (저장만) ~ 9 (최대 압축), 기본값: 5
+  excludeSystemFiles?: boolean; // 시스템 파일 제외 여부, 기본값: true
 }
 
 // Files to exclude from ZIP
@@ -41,16 +43,20 @@ export async function createZip(files: FileWithPath[], options: ZipOptions = {})
   const zipFileWriter = new BlobWriter('application/zip');
 
   // Configure ZipWriter with optional password (AES-256 encryption)
+  const compressionLevel = options.compressionLevel ?? 5;
   const zipWriter = new ZipWriter(zipFileWriter, {
     password: options.password || undefined,
     encryptionStrength: 3, // AES-256
+    level: compressionLevel as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9,
   });
 
   let fileCount = 0;
 
+  const excludeSystemFiles = options.excludeSystemFiles ?? true;
+
   for (const { file, path } of files) {
-    // Skip excluded files
-    if (shouldExclude(path)) {
+    // Skip excluded files if option is enabled
+    if (excludeSystemFiles && shouldExclude(path)) {
       continue;
     }
 

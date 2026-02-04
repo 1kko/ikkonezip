@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Download, Archive, File, Loader2, Lock, Eye, EyeOff } from 'lucide-react';
+import { Download, Archive, File, Loader2, Lock, Eye, EyeOff, Gauge, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { useSettings } from '@/hooks/useSettings';
 import type { ZipOptions } from '@/utils/zipFiles';
 
 interface DownloadButtonProps {
@@ -22,8 +23,8 @@ export function DownloadButton({
   onDownloadZip,
   onDownloadSingle,
 }: DownloadButtonProps) {
+  const { settings, updateSetting } = useSettings();
   const [zipFilename, setZipFilename] = useState('files.zip');
-  const [compressSingle, setCompressSingle] = useState(true);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -41,10 +42,13 @@ export function DownloadButton({
   const isSingleFile = fileCount === 1;
 
   const handleDownload = async () => {
-    if (isSingleFile && !compressSingle) {
+    if (isSingleFile && !settings.compressSingle) {
       onDownloadSingle();
     } else {
-      const options: ZipOptions = {};
+      const options: ZipOptions = {
+        compressionLevel: settings.compressionLevel,
+        excludeSystemFiles: settings.excludeSystemFiles,
+      };
       if (password.trim()) {
         options.password = password.trim();
       }
@@ -62,10 +66,10 @@ export function DownloadButton({
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setCompressSingle(false)}
+                onClick={() => updateSetting('compressSingle', false)}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all text-sm font-medium",
-                  !compressSingle
+                  !settings.compressSingle
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-transparent bg-secondary text-muted-foreground hover:bg-secondary/80"
                 )}
@@ -75,10 +79,10 @@ export function DownloadButton({
               </button>
               <button
                 type="button"
-                onClick={() => setCompressSingle(true)}
+                onClick={() => updateSetting('compressSingle', true)}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all text-sm font-medium",
-                  compressSingle
+                  settings.compressSingle
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-transparent bg-secondary text-muted-foreground hover:bg-secondary/80"
                 )}
@@ -91,7 +95,7 @@ export function DownloadButton({
         )}
 
         {/* ZIP options */}
-        {(fileCount > 1 || compressSingle) && (
+        {(fileCount > 1 || settings.compressSingle) && (
           <div className="space-y-3">
             {/* ZIP filename input */}
             <div className="flex items-center gap-3">
@@ -138,6 +142,71 @@ export function DownloadButton({
                 </button>
               </div>
             </div>
+
+            {/* Compression level */}
+            <div className="flex items-center gap-3">
+              <Label className="flex items-center gap-2 text-muted-foreground whitespace-nowrap w-16">
+                <Gauge className="w-4 h-4" />
+                압축률
+              </Label>
+              <div className="flex-1 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateSetting('compressionLevel', 0)}
+                  className={cn(
+                    "flex-1 px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium",
+                    settings.compressionLevel === 0
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-transparent bg-secondary text-muted-foreground hover:bg-secondary/80"
+                  )}
+                >
+                  저장만
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateSetting('compressionLevel', 5)}
+                  className={cn(
+                    "flex-1 px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium",
+                    settings.compressionLevel === 5
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-transparent bg-secondary text-muted-foreground hover:bg-secondary/80"
+                  )}
+                >
+                  표준
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateSetting('compressionLevel', 9)}
+                  className={cn(
+                    "flex-1 px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium",
+                    settings.compressionLevel === 9
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-transparent bg-secondary text-muted-foreground hover:bg-secondary/80"
+                  )}
+                >
+                  최대
+                </button>
+              </div>
+            </div>
+
+            {/* Exclude system files */}
+            <div className="flex items-center gap-3">
+              <Label className="flex items-center gap-2 text-muted-foreground whitespace-nowrap w-16">
+                <Trash2 className="w-4 h-4" />
+                정리
+              </Label>
+              <label className="flex-1 flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.excludeSystemFiles}
+                  onChange={(e) => updateSetting('excludeSystemFiles', e.target.checked)}
+                  className="w-4 h-4 rounded border-input accent-primary cursor-pointer"
+                />
+                <span className="text-sm text-muted-foreground">
+                  불필요 파일 제외 (.DS_Store, Thumbs.db 등)
+                </span>
+              </label>
+            </div>
           </div>
         )}
 
@@ -159,13 +228,13 @@ export function DownloadButton({
           ) : (
             <>
               <Download className="w-4 h-4" />
-              {isSingleFile && !compressSingle
+              {isSingleFile && !settings.compressSingle
                 ? '정규화된 파일 다운로드'
                 : password.trim()
                   ? 'ZIP 다운로드 (암호화)'
                   : 'ZIP 다운로드'
               }
-              {(fileCount > 1 || compressSingle) && (
+              {(fileCount > 1 || settings.compressSingle) && (
                 <span className="ml-1 px-2 py-0.5 bg-primary-foreground/20 rounded text-xs">
                   {fileCount}개 파일
                 </span>
