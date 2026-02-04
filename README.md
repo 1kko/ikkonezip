@@ -51,13 +51,12 @@ npm run build
 npm run preview
 ```
 
-### Docker 배포
+### Docker 빌드
 
 ```bash
-docker-compose up --build
+docker build -t ikkonezip .
+docker run -p 3000:80 ikkonezip
 ```
-
-http://localhost:3000 에서 확인
 
 ## 환경 변수
 
