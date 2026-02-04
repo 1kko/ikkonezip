@@ -1,0 +1,88 @@
+import { useEffect } from 'react';
+import { AlertCircle, Zap } from 'lucide-react';
+import { Header } from '@/components/Header';
+import { FileUploader } from '@/components/FileUploader';
+import { FileList } from '@/components/FileList';
+import { DownloadButton } from '@/components/DownloadButton';
+import { useFileProcessor } from '@/hooks/useFileProcessor';
+import { Card, CardContent } from '@/components/ui/card';
+
+const APP_NAME = import.meta.env.VITE_APP_NAME || '맥윈집';
+
+function App() {
+  const {
+    files,
+    isProcessing,
+    error,
+    folderName,
+    addFiles,
+    removeFile,
+    clearFiles,
+    downloadAsZip,
+    downloadSingle,
+  } = useFileProcessor();
+
+  useEffect(() => {
+    document.title = `${APP_NAME} - 한글 파일명 정규화 & 압축`;
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
+      <div className="container mx-auto px-4 py-12 max-w-2xl">
+        <Header hideExample={files.length > 0} />
+
+        <main className="space-y-6">
+          {/* Upload section */}
+          <Card>
+            <CardContent className="pt-6">
+              <FileUploader onFilesSelected={addFiles} />
+            </CardContent>
+          </Card>
+
+          {/* Error message */}
+          {error && (
+            <Card className="border-destructive/50 bg-destructive/10 animate-fadeIn">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-destructive/20">
+                    <AlertCircle className="w-5 h-5 text-destructive" />
+                  </div>
+                  <p className="text-destructive text-sm font-medium">{error}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* File list */}
+          <FileList
+            files={files}
+            onRemoveFile={removeFile}
+            onClearAll={clearFiles}
+          />
+
+          {/* Download section */}
+          <DownloadButton
+            fileCount={files.length}
+            isProcessing={isProcessing}
+            folderName={folderName}
+            onDownloadZip={downloadAsZip}
+            onDownloadSingle={downloadSingle}
+          />
+        </main>
+
+        {/* Footer */}
+        <footer className="mt-16 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary text-sm text-muted-foreground">
+            <Zap className="w-4 h-4 text-primary" />
+            NFD → NFC 변환으로 한글 파일명 호환성 해결
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            모든 처리는 브라우저에서 이루어지며, 파일이 서버로 업로드되지 않습니다.
+          </p>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+export default App;
