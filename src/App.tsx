@@ -4,6 +4,7 @@ import { Header } from '@/components/Header';
 import { FileUploader } from '@/components/FileUploader';
 import { FileList } from '@/components/FileList';
 import { DownloadButton } from '@/components/DownloadButton';
+import { ZipPasswordPrompt } from '@/components/ZipPasswordPrompt';
 import { Footer } from '@/components/Footer';
 import { useFileProcessor } from '@/hooks/useFileProcessor';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,11 +17,14 @@ function App() {
     isProcessing,
     error,
     folderName,
+    needsPassword,
     addFiles,
-    removeFile,
+    removeFiles,
     clearFiles,
     downloadAsZip,
     downloadSingle,
+    submitZipPassword,
+    cancelZipPassword,
   } = useFileProcessor();
 
   useEffect(() => {
@@ -30,18 +34,24 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
       <div className="container mx-auto px-4 py-12 max-w-2xl">
-        <Header hideExample={files.length > 0} />
+        <Header />
 
         <main className="space-y-6">
           {/* Upload section */}
-          <Card>
-            <CardContent className="pt-6">
-              <FileUploader onFilesSelected={addFiles} />
-            </CardContent>
-          </Card>
+          <FileUploader onFilesSelected={addFiles} hideExample={files.length > 0} />
+
+          {/* ZIP password prompt */}
+          {needsPassword && (
+            <ZipPasswordPrompt
+              isProcessing={isProcessing}
+              error={error}
+              onSubmit={submitZipPassword}
+              onCancel={cancelZipPassword}
+            />
+          )}
 
           {/* Error message */}
-          {error && (
+          {error && !needsPassword && (
             <Card className="border-destructive/50 bg-destructive/10 animate-fadeIn">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
@@ -57,8 +67,7 @@ function App() {
           {/* File list */}
           <FileList
             files={files}
-            onRemoveFile={removeFile}
-            onClearAll={clearFiles}
+            onRemoveFiles={removeFiles}
           />
 
           {/* Download section */}
@@ -69,6 +78,19 @@ function App() {
             onDownloadZip={downloadAsZip}
             onDownloadSingle={downloadSingle}
           />
+
+          {/* Reset link */}
+          {files.length > 0 && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={clearFiles}
+                className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
+              >
+                초기화
+              </button>
+            </div>
+          )}
         </main>
 
         {/* Footer */}

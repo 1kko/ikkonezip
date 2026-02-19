@@ -1,6 +1,7 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { normalizeFilename, needsNormalization } from '@/utils/normalizeFilename';
 import { createZip, downloadBlob, downloadSingleFile, getRootFolderName, getDatePrefix, type FileWithPath, type ZipOptions } from '@/utils/zipFiles';
+import { isZipFile, isZipEncrypted, extractZip } from '@/utils/extractZip';
 
 export interface ProcessedFile {
   id: string;
@@ -18,11 +19,15 @@ export interface UseFileProcessorReturn {
   isProcessing: boolean;
   error: string | null;
   folderName: string | null;
-  addFiles: (fileList: FileList | File[]) => void;
+  needsPassword: boolean;
+  addFiles: (fileList: FileList | File[]) => Promise<void>;
   removeFile: (id: string) => void;
+  removeFiles: (ids: string[]) => void;
   clearFiles: () => void;
   downloadAsZip: (zipFilename?: string, options?: ZipOptions) => Promise<void>;
   downloadSingle: () => void;
+  submitZipPassword: (password: string) => Promise<void>;
+  cancelZipPassword: () => void;
 }
 
 // Files to exclude from the list
@@ -42,6 +47,9 @@ export function useFileProcessor(): UseFileProcessorReturn {
   const [files, setFiles] = useState<ProcessedFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const pendingZipFileRef = useRef<File | null>(null);
+  const pendingNonZipFilesRef = useRef<ProcessedFile[]>([]);
 
   // Detect folder name from uploaded files
   const folderName = useMemo(() => {
@@ -50,20 +58,13 @@ export function useFileProcessor(): UseFileProcessorReturn {
     return getRootFolderName(fileData);
   }, [files]);
 
-  const addFiles = useCallback((fileList: FileList | File[]) => {
+  const processRegularFiles = useCallback((fileList: File[]): ProcessedFile[] => {
     const newFiles: ProcessedFile[] = [];
-
-    for (const file of Array.from(fileList)) {
-      // Skip excluded files (like .DS_Store)
-      if (shouldExclude(file.name)) {
-        continue;
-      }
-
-      // Handle files from directory upload (webkitRelativePath) or regular upload
+    for (const file of fileList) {
+      if (shouldExclude(file.name)) continue;
       const path = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
       const normalizedPath = normalizeFilename(path);
       const normalizedName = normalizeFilename(file.name);
-
       newFiles.push({
         id: generateId(),
         file,
@@ -75,13 +76,116 @@ export function useFileProcessor(): UseFileProcessorReturn {
         size: file.size,
       });
     }
+    return newFiles;
+  }, []);
 
-    setFiles(prev => [...prev, ...newFiles]);
+  const processExtractedFiles = useCallback((extracted: { file: File; path: string }[]): ProcessedFile[] => {
+    const newFiles: ProcessedFile[] = [];
+    for (const { file, path } of extracted) {
+      if (shouldExclude(file.name)) continue;
+      const normalizedPath = normalizeFilename(path);
+      const normalizedName = normalizeFilename(file.name);
+      newFiles.push({
+        id: generateId(),
+        file,
+        originalName: file.name,
+        normalizedName,
+        path,
+        normalizedPath,
+        needsNormalization: needsNormalization(path),
+        size: file.size,
+      });
+    }
+    return newFiles;
+  }, []);
+
+  const addFiles = useCallback(async (fileList: FileList | File[]) => {
+    const allFiles = Array.from(fileList);
+    const regularFiles: File[] = [];
+    const zipFiles: File[] = [];
+
+    for (const file of allFiles) {
+      if (isZipFile(file)) {
+        zipFiles.push(file);
+      } else {
+        regularFiles.push(file);
+      }
+    }
+
+    // Process regular files immediately
+    const processedRegular = processRegularFiles(regularFiles);
+
+    // Process ZIP files
+    const allExtracted: ProcessedFile[] = [];
+    for (const zipFile of zipFiles) {
+      try {
+        const encrypted = await isZipEncrypted(zipFile);
+        if (encrypted) {
+          // Store pending state for password prompt
+          pendingZipFileRef.current = zipFile;
+          pendingNonZipFilesRef.current = processedRegular;
+          setNeedsPassword(true);
+          // Add regular files now, ZIP will be added after password
+          if (processedRegular.length > 0) {
+            setFiles(prev => [...prev, ...processedRegular]);
+          }
+          setError(null);
+          return;
+        }
+        const extracted = await extractZip(zipFile);
+        allExtracted.push(...processExtractedFiles(extracted));
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? `ZIP 파일 처리 실패 (${zipFile.name}): ${err.message}`
+            : `ZIP 파일 처리 실패 (${zipFile.name})`
+        );
+        return;
+      }
+    }
+
+    const allNew = [...processedRegular, ...allExtracted];
+    if (allNew.length > 0) {
+      setFiles(prev => [...prev, ...allNew]);
+    }
     setError(null);
+  }, [processRegularFiles, processExtractedFiles]);
+
+  const submitZipPassword = useCallback(async (password: string) => {
+    const zipFile = pendingZipFileRef.current;
+    if (!zipFile) return;
+
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      const extracted = await extractZip(zipFile, { password });
+      const processedFiles = processExtractedFiles(extracted);
+
+      setFiles(prev => [...prev, ...processedFiles]);
+      setNeedsPassword(false);
+      pendingZipFileRef.current = null;
+      pendingNonZipFilesRef.current = [];
+    } catch {
+      setError('암호가 올바르지 않거나 ZIP 파일을 읽을 수 없습니다');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [processExtractedFiles]);
+
+  const cancelZipPassword = useCallback(() => {
+    setNeedsPassword(false);
+    pendingZipFileRef.current = null;
+    pendingNonZipFilesRef.current = [];
   }, []);
 
   const removeFile = useCallback((id: string) => {
     setFiles(prev => prev.filter(f => f.id !== id));
+  }, []);
+
+  const removeFiles = useCallback((ids: string[]) => {
+    const idSet = new Set(ids);
+    setFiles(prev => prev.filter(f => !idSet.has(f.id)));
   }, []);
 
   const clearFiles = useCallback(() => {
@@ -138,10 +242,14 @@ export function useFileProcessor(): UseFileProcessorReturn {
     isProcessing,
     error,
     folderName,
+    needsPassword,
     addFiles,
     removeFile,
+    removeFiles,
     clearFiles,
     downloadAsZip,
     downloadSingle,
+    submitZipPassword,
+    cancelZipPassword,
   };
 }

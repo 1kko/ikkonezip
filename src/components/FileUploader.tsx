@@ -1,14 +1,15 @@
 import { useCallback, useRef, useState } from 'react';
-import { Upload, FolderOpen, File as FileIcon, Folder } from 'lucide-react';
+import { Upload, FolderOpen, File as FileIcon, Folder, Archive, ArrowRight, FileText, FolderTree, Apple, Monitor } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface FileUploaderProps {
-  onFilesSelected: (files: FileList | File[]) => void;
+  onFilesSelected: (files: FileList | File[]) => void | Promise<void>;
+  hideExample?: boolean;
 }
 
-export function FileUploader({ onFilesSelected }: FileUploaderProps) {
+export function FileUploader({ onFilesSelected, hideExample = false }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -96,7 +97,8 @@ export function FileUploader({ onFilesSelected }: FileUploaderProps) {
     <div className="space-y-4">
       <Card
         className={cn(
-          "relative p-8 cursor-pointer transition-all duration-200 border-2 border-dashed",
+          "relative cursor-pointer transition-all duration-200 border-2 border-dashed",
+          hideExample ? "p-8" : "p-8 pb-6",
           isDragging
             ? "border-primary bg-primary/5 scale-[1.02]"
             : "border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/50"
@@ -154,7 +156,82 @@ export function FileUploader({ onFilesSelected }: FileUploaderProps) {
               <Folder className="w-3.5 h-3.5" />
               폴더 업로드 지원
             </span>
+            <span className="flex items-center gap-1">
+              <Archive className="w-3.5 h-3.5" />
+              ZIP 자동 추출
+            </span>
           </div>
+
+          {/* Example — inline inside the drop zone */}
+          {!hideExample && (
+            <div className="w-full mt-2 pt-4 border-t border-dashed border-muted-foreground/20">
+              <div className="space-y-3">
+                {/* Header row */}
+                <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center text-xs font-medium text-muted-foreground">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Apple className="w-3.5 h-3.5" />
+                    <span>맥에서 생성</span>
+                  </div>
+                  <div></div>
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Monitor className="w-3.5 h-3.5" />
+                    <span>윈도우에서 정상 표시</span>
+                  </div>
+                </div>
+
+                {/* File example */}
+                <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
+                  <div className="flex items-center justify-end gap-2">
+                    <FileText className="w-4 h-4 text-destructive/70 flex-shrink-0" />
+                    <code className="px-2 py-1 bg-destructive/10 text-destructive rounded text-xs font-mono truncate">
+                      ㅎㅏㄴㄱㅡㄹㅍㅏㅇㅣㄹ.txt
+                    </code>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                    <code className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded text-xs font-mono truncate">
+                      한글파일.txt
+                    </code>
+                  </div>
+                </div>
+
+                {/* Folder example */}
+                <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
+                  <div className="flex items-center justify-end gap-2">
+                    <Folder className="w-4 h-4 text-destructive/70 flex-shrink-0" />
+                    <code className="px-2 py-1 bg-destructive/10 text-destructive rounded text-xs font-mono truncate">
+                      ㅍㅗㄹㄷㅓㅇㅣㄹㅡㅁ/
+                    </code>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <div className="flex items-center gap-2">
+                    <Folder className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                    <code className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded text-xs font-mono truncate">
+                      폴더이름/
+                    </code>
+                  </div>
+                </div>
+
+                {/* Nested folder example */}
+                <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
+                  <div className="flex items-center justify-end gap-2">
+                    <FolderTree className="w-4 h-4 text-destructive/70 flex-shrink-0" />
+                    <code className="px-2 py-1 bg-destructive/10 text-destructive rounded text-xs font-mono truncate">
+                      ㅍㅗㄹㄷㅓ/ㅍㅏㅇㅣㄹ.zip
+                    </code>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <div className="flex items-center gap-2">
+                    <FolderTree className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                    <code className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded text-xs font-mono truncate">
+                      폴더/파일.zip
+                    </code>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 

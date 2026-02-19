@@ -1,4 +1,5 @@
-import { FileText, Image, Archive, Code, File, X, Trash2, AlertTriangle } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { FileText, Image, Archive, Code, File, Trash2, AlertTriangle } from 'lucide-react';
 import type { ProcessedFile } from '@/hooks/useFileProcessor';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,8 +9,7 @@ import type { ReactNode } from 'react';
 
 interface FileListProps {
   files: ProcessedFile[];
-  onRemoveFile: (id: string) => void;
-  onClearAll: () => void;
+  onRemoveFiles: (ids: string[]) => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -39,13 +39,43 @@ function getFileIcon(filename: string): ReactNode {
   return <File className={`${iconClass} text-muted-foreground`} />;
 }
 
-export function FileList({ files, onRemoveFile, onClearAll }: FileListProps) {
+export function FileList({ files, onRemoveFiles }: FileListProps) {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      if (prev.size === files.length) {
+        return new Set();
+      }
+      return new Set(files.map(f => f.id));
+    });
+  }, [files]);
+
+  const handleRemoveSelected = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    onRemoveFiles(Array.from(selectedIds));
+    setSelectedIds(new Set());
+  }, [selectedIds, onRemoveFiles]);
+
   if (files.length === 0) {
     return null;
   }
 
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
   const filesNeedingNormalization = files.filter(f => f.needsNormalization).length;
+  const allSelected = selectedIds.size === files.length;
 
   return (
     <Card className="animate-fadeIn">
@@ -69,22 +99,47 @@ export function FileList({ files, onRemoveFile, onClearAll }: FileListProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={onClearAll}
+            onClick={handleRemoveSelected}
+            disabled={selectedIds.size === 0}
             className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
           >
             <Trash2 className="w-4 h-4" />
-            모두 삭제
+            선택 삭제
+            {selectedIds.size > 0 && (
+              <span className="ml-0.5 text-xs">({selectedIds.size})</span>
+            )}
           </Button>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         <ScrollArea className="max-h-72 custom-scrollbar pr-2">
           <div className="space-y-2">
+            {/* Select all */}
+            <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleSelectAll}
+                className="w-3.5 h-3.5 rounded border-input accent-primary cursor-pointer"
+              />
+              전체 선택
+            </label>
             {files.map((file) => (
               <div
                 key={file.id}
-                className="group flex items-center gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                className="group flex items-center gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+                title={file.path}
+                onClick={() => toggleSelect(file.id)}
               >
+                {/* Checkbox */}
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(file.id)}
+                  onChange={() => toggleSelect(file.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex-shrink-0 w-3.5 h-3.5 rounded border-input accent-primary cursor-pointer"
+                />
+
                 {/* File icon */}
                 <div className="flex-shrink-0">
                   {getFileIcon(file.originalName)}
@@ -106,16 +161,6 @@ export function FileList({ files, onRemoveFile, onClearAll }: FileListProps) {
                 <span className="flex-shrink-0 text-xs text-muted-foreground font-mono">
                   {formatFileSize(file.size)}
                 </span>
-
-                {/* Remove button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="flex-shrink-0 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => onRemoveFile(file.id)}
-                >
-                  <X className="w-3.5 h-3.5" />
-                </Button>
               </div>
             ))}
           </div>
