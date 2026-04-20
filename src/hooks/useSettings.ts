@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 const STORAGE_KEY = 'ikkonezip-settings';
 
@@ -41,12 +41,7 @@ function saveSettings(settings: Partial<Settings>): void {
 }
 
 export function useSettings() {
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-
-  // Load settings on mount
-  useEffect(() => {
-    setSettings(loadSettings());
-  }, []);
+  const [settings, setSettings] = useState<Settings>(loadSettings);
 
   const updateSetting = useCallback(<K extends keyof Settings>(key: K, value: Settings[K]) => {
     setSettings(prev => {

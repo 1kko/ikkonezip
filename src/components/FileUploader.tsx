@@ -9,6 +9,39 @@ interface FileUploaderProps {
   hideExample?: boolean;
 }
 
+async function traverseFileTree(
+  item: FileSystemEntry,
+  path: string,
+  files: File[]
+): Promise<void> {
+  if (item.isFile) {
+    const fileEntry = item as FileSystemFileEntry;
+    return new Promise((resolve) => {
+      fileEntry.file((file) => {
+        const fileWithPath = new File([file], file.name, { type: file.type });
+        Object.defineProperty(fileWithPath, 'webkitRelativePath', {
+          value: path + file.name,
+          writable: false,
+        });
+        files.push(fileWithPath);
+        resolve();
+      });
+    });
+  } else if (item.isDirectory) {
+    const dirEntry = item as FileSystemDirectoryEntry;
+    const dirReader = dirEntry.createReader();
+    return new Promise((resolve) => {
+      dirReader.readEntries(async (entries) => {
+        const promises = entries.map((entry) =>
+          traverseFileTree(entry, path + item.name + '/', files)
+        );
+        await Promise.all(promises);
+        resolve();
+      });
+    });
+  }
+}
+
 export function FileUploader({ onFilesSelected, hideExample = false }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -52,39 +85,6 @@ export function FileUploader({ onFilesSelected, hideExample = false }: FileUploa
       onFilesSelected(e.dataTransfer.files);
     }
   }, [onFilesSelected]);
-
-  const traverseFileTree = async (
-    item: FileSystemEntry,
-    path: string,
-    files: File[]
-  ): Promise<void> => {
-    if (item.isFile) {
-      const fileEntry = item as FileSystemFileEntry;
-      return new Promise((resolve) => {
-        fileEntry.file((file) => {
-          const fileWithPath = new File([file], file.name, { type: file.type });
-          Object.defineProperty(fileWithPath, 'webkitRelativePath', {
-            value: path + file.name,
-            writable: false,
-          });
-          files.push(fileWithPath);
-          resolve();
-        });
-      });
-    } else if (item.isDirectory) {
-      const dirEntry = item as FileSystemDirectoryEntry;
-      const dirReader = dirEntry.createReader();
-      return new Promise((resolve) => {
-        dirReader.readEntries(async (entries) => {
-          const promises = entries.map((entry) =>
-            traverseFileTree(entry, path + item.name + '/', files)
-          );
-          await Promise.all(promises);
-          resolve();
-        });
-      });
-    }
-  };
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
