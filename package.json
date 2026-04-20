@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "start": "serve -s dist -l 3000",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
@@ -21,7 +20,6 @@
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "serve": "^14.2.5",
     "tailwind-merge": "^3.4.0"
   },
   "overrides": {
