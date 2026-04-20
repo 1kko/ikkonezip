@@ -29,3 +29,6 @@ jobs:
 
       - name: Build (typecheck + bundle)
         run: npm run build
+
+      - name: Bundle size budget
+        run: ./scripts/check-bundle-size.sh
