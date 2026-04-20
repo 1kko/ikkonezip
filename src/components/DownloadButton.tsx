@@ -28,9 +28,11 @@ export function DownloadButton({
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Update default filename when folder is uploaded
+  // Sync filename input default to folderName prop while keeping it user-editable.
+  // This is the documented "controlled input synced to prop" exception to set-state-in-effect.
   useEffect(() => {
     if (folderName) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setZipFilename(`${folderName}.zip`);
     }
   }, [folderName]);

@@ -9,11 +9,18 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'jsdom',
+    environment: 'happy-dom',
+    setupFiles: ['./src/test/setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary'],
       include: ['src/utils/**', 'src/hooks/**'],
+      thresholds: {
+        statements: 100,
+        functions: 100,
+        lines: 100,
+        branches: 90,
+      },
     },
   },
 })

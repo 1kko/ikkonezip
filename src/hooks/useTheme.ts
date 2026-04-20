@@ -20,17 +20,15 @@ function applyTheme(theme: Theme) {
 }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>('system');
-
-  // Load theme on mount
-  useEffect(() => {
+  const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    const initialTheme = stored || 'system';
-    setThemeState(initialTheme);
-    applyTheme(initialTheme);
-  }, []);
+    return stored || 'system';
+  });
 
-  // Listen for system theme changes
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -47,7 +45,6 @@ export function useTheme() {
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);
     localStorage.setItem(STORAGE_KEY, newTheme);
-    applyTheme(newTheme);
   }, []);
 
   return { theme, setTheme };
