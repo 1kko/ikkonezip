@@ -1,8 +1,5 @@
 import { configure } from '@zip.js/zip.js';
 
-// jsdom doesn't implement the Worker API. Without this, @zip.js spawns a
-// worker that silently produces malformed archives, and ZipReader fails with
-// "File format is not recognized" — but only in headless CI, because some
-// platforms (e.g. macOS Node 25) happen to fall back to in-thread compression.
-// Forcing useWebWorkers off makes test behavior identical across environments.
+// Force in-thread compression in tests so timing is deterministic and we
+// don't depend on the test environment's Worker behavior.
 configure({ useWebWorkers: false });
