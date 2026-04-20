@@ -14,6 +14,12 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'text-summary'],
       include: ['src/utils/**', 'src/hooks/**'],
+      thresholds: {
+        statements: 100,
+        functions: 100,
+        lines: 100,
+        branches: 90,
+      },
     },
   },
 })
