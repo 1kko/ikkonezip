@@ -8,9 +8,15 @@ updates:
       day: "monday"
     open-pull-requests-limit: 5
     groups:
-      # Bundle dev tooling so we don't get 10 PRs every week
+      # Bundle dev tooling minor/patch updates so we don't get 10 PRs every
+      # week. Majors come as individual PRs — bundling 5+ breaking changes
+      # in one PR (as happened with #10) makes triage impossible when one
+      # of them has a peer-dep conflict.
       dev-dependencies:
         dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
       # Bundle React + types together — usually need to upgrade in lockstep
       react:
         patterns:
