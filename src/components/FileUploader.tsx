@@ -182,8 +182,8 @@ export function FileUploader({ onFilesSelected, hideExample = false }: FileUploa
                 {/* File example */}
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
                   <div className="flex items-center justify-end gap-2">
-                    <FileText className="w-4 h-4 text-destructive/70 flex-shrink-0" />
-                    <code className="px-2 py-1 bg-destructive/10 text-destructive rounded text-xs font-mono truncate">
+                    <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
+                    <code className="px-2 py-1 bg-red-500/10 text-red-600 dark:text-red-400 rounded text-xs font-mono truncate">
                       ㅎㅏㄴㄱㅡㄹㅍㅏㅇㅣㄹ.txt
                     </code>
                   </div>
@@ -199,8 +199,8 @@ export function FileUploader({ onFilesSelected, hideExample = false }: FileUploa
                 {/* Folder example */}
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
                   <div className="flex items-center justify-end gap-2">
-                    <Folder className="w-4 h-4 text-destructive/70 flex-shrink-0" />
-                    <code className="px-2 py-1 bg-destructive/10 text-destructive rounded text-xs font-mono truncate">
+                    <Folder className="w-4 h-4 text-red-500 flex-shrink-0" />
+                    <code className="px-2 py-1 bg-red-500/10 text-red-600 dark:text-red-400 rounded text-xs font-mono truncate">
                       ㅍㅗㄹㄷㅓㅇㅣㄹㅡㅁ/
                     </code>
                   </div>
@@ -216,8 +216,8 @@ export function FileUploader({ onFilesSelected, hideExample = false }: FileUploa
                 {/* Nested folder example */}
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
                   <div className="flex items-center justify-end gap-2">
-                    <FolderTree className="w-4 h-4 text-destructive/70 flex-shrink-0" />
-                    <code className="px-2 py-1 bg-destructive/10 text-destructive rounded text-xs font-mono truncate">
+                    <FolderTree className="w-4 h-4 text-red-500 flex-shrink-0" />
+                    <code className="px-2 py-1 bg-red-500/10 text-red-600 dark:text-red-400 rounded text-xs font-mono truncate">
                       ㅍㅗㄹㄷㅓ/ㅍㅏㅇㅣㄹ.zip
                     </code>
                   </div>
