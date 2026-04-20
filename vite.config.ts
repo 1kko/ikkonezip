@@ -81,5 +81,11 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    build: {
+      // 'hidden' emits .map files to dist but omits the //# sourceMappingURL
+      // comment from JS bundles — so source maps are available for local
+      // debugging but never referenced by what we ship publicly.
+      sourcemap: 'hidden',
+    },
   }
 })
