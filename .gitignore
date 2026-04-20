@@ -42,3 +42,8 @@ coverage
 *.pem
 .vercel
 .turbo
+
+# Local agent / browser tooling
+.openchrome
+.playwright-mcp
+.claude/local-*
