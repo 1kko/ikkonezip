@@ -183,7 +183,7 @@ export function FileUploader({ onFilesSelected, hideExample = false }: FileUploa
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
                   <div className="flex items-center justify-end gap-2">
                     <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    <code className="px-2 py-1 bg-red-500/10 text-red-700 dark:text-red-400 rounded text-xs font-mono truncate">
+                    <code className="px-2 py-1 bg-red-500/10 text-red-700 dark:text-red-300 rounded text-xs font-mono truncate">
                       ㅎㅏㄴㄱㅡㄹㅍㅏㅇㅣㄹ.txt
                     </code>
                   </div>
@@ -200,7 +200,7 @@ export function FileUploader({ onFilesSelected, hideExample = false }: FileUploa
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
                   <div className="flex items-center justify-end gap-2">
                     <Folder className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    <code className="px-2 py-1 bg-red-500/10 text-red-700 dark:text-red-400 rounded text-xs font-mono truncate">
+                    <code className="px-2 py-1 bg-red-500/10 text-red-700 dark:text-red-300 rounded text-xs font-mono truncate">
                       ㅍㅗㄹㄷㅓㅇㅣㄹㅡㅁ/
                     </code>
                   </div>
@@ -217,7 +217,7 @@ export function FileUploader({ onFilesSelected, hideExample = false }: FileUploa
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
                   <div className="flex items-center justify-end gap-2">
                     <FolderTree className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    <code className="px-2 py-1 bg-red-500/10 text-red-700 dark:text-red-400 rounded text-xs font-mono truncate">
+                    <code className="px-2 py-1 bg-red-500/10 text-red-700 dark:text-red-300 rounded text-xs font-mono truncate">
                       ㅍㅗㄹㄷㅓ/ㅍㅏㅇㅣㄹ.zip
                     </code>
                   </div>
