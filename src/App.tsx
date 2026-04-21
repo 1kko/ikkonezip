@@ -52,9 +52,13 @@ function App() {
       }
     },
     'escape': () => {
-      if (files.length > 0) clearFiles();
+      if (needsPassword) {
+        cancelZipPassword();
+      } else if (files.length > 0) {
+        clearFiles();
+      }
     },
-  }), [files.length, isProcessing, downloadAsZip, clearFiles]);
+  }), [files.length, isProcessing, downloadAsZip, clearFiles, needsPassword, cancelZipPassword]);
 
   useKeyboardShortcuts(shortcuts);
 
