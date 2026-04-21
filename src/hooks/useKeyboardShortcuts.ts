@@ -16,6 +16,10 @@ export function useKeyboardShortcuts(shortcuts: ShortcutMap): void {
   useEffect(() => {
     function handler(event: KeyboardEvent) {
       if (isEditableTarget(event.target)) return;
+      // Modal/dialog owns the keyboard while open. Without this, global
+      // Escape fires alongside Radix's own handler and clears the file list
+      // every time a user dismisses a preview modal.
+      if (document.querySelector('[role="dialog"][data-state="open"]')) return;
 
       const combo = comboFromEvent(event);
       const action = shortcuts[combo];
