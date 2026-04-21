@@ -569,6 +569,31 @@ describe('useFileProcessor', () => {
     });
   });
 
+  describe('progress tracking', () => {
+    it('starts with progress null', () => {
+      const { result } = renderHook(() => useFileProcessor());
+      expect(result.current.progress).toBeNull();
+    });
+
+    it('resets progress to null after downloadAsZip completes', async () => {
+      const { result } = renderHook(() => useFileProcessor());
+
+      await act(async () => {
+        await result.current.addFiles([
+          createMockFile('a.txt'),
+          createMockFile('b.txt'),
+        ]);
+      });
+
+      await act(async () => {
+        await result.current.downloadAsZip('test.zip');
+      });
+
+      // After completion, progress is reset to null
+      expect(result.current.progress).toBeNull();
+    });
+  });
+
   describe('downloadAsZip', () => {
     it('sets error when no files', async () => {
       const { result } = renderHook(() => useFileProcessor());

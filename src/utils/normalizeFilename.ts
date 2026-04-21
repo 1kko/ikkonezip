@@ -1,12 +1,17 @@
+export type NormalizationForm = 'NFC' | 'NFD';
+
 /**
- * Normalizes a filename from NFD (decomposed) to NFC (composed) form.
+ * Normalizes a filename to the requested Unicode normalization form.
  *
- * macOS stores filenames in NFD form where Korean characters are decomposed
- * (e.g., "가" becomes "ㄱ" + "ㅏ"), while Windows expects NFC form.
- * This function converts NFD to NFC to prevent garbled Korean filenames.
+ * Default 'NFC' fixes the macOS→Windows case (NFD-decomposed Korean filenames
+ * appear garbled on Windows). Use 'NFD' for the reverse direction
+ * (Windows→macOS) when the destination expects decomposed form.
  */
-export function normalizeFilename(filename: string): string {
-  return filename.normalize('NFC');
+export function normalizeFilename(
+  filename: string,
+  targetForm: NormalizationForm = 'NFC'
+): string {
+  return filename.normalize(targetForm);
 }
 
 /**

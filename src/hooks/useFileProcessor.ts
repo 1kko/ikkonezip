@@ -20,6 +20,7 @@ export interface UseFileProcessorReturn {
   error: string | null;
   folderName: string | null;
   needsPassword: boolean;
+  progress: { current: number; total: number } | null;
   addFiles: (fileList: FileList | File[]) => Promise<void>;
   removeFile: (id: string) => void;
   removeFiles: (ids: string[]) => void;
@@ -48,6 +49,7 @@ export function useFileProcessor(): UseFileProcessorReturn {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsPassword, setNeedsPassword] = useState(false);
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const pendingZipFileRef = useRef<File | null>(null);
   const pendingNonZipFilesRef = useRef<ProcessedFile[]>([]);
 
@@ -201,6 +203,7 @@ export function useFileProcessor(): UseFileProcessorReturn {
 
     setIsProcessing(true);
     setError(null);
+    setProgress({ current: 0, total: files.length });
 
     try {
       const fileData: FileWithPath[] = files.map(f => ({
@@ -208,9 +211,13 @@ export function useFileProcessor(): UseFileProcessorReturn {
         path: f.path,
       }));
 
-      const zipBlob = await createZip(fileData, options);
+      const zipBlob = await createZip(fileData, {
+        ...options,
+        onProgress: (current, total) => setProgress({ current, total }),
+      });
 
-      // Add date prefix to filename
+      // ZIP filename always normalized to NFC (user types on NFC keyboard;
+      // the per-entry filenames inside the zip honor options.targetForm).
       const datePrefix = getDatePrefix();
       const finalFilename = datePrefix + normalizeFilename(zipFilename);
 
@@ -219,6 +226,7 @@ export function useFileProcessor(): UseFileProcessorReturn {
       setError(err instanceof Error ? err.message : 'Failed to create ZIP file');
     } finally {
       setIsProcessing(false);
+      setProgress(null);
     }
   }, [files]);
 
@@ -243,6 +251,7 @@ export function useFileProcessor(): UseFileProcessorReturn {
     error,
     folderName,
     needsPassword,
+    progress,
     addFiles,
     removeFile,
     removeFiles,

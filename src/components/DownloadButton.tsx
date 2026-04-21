@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Download, Archive, File, Loader2, Lock, Eye, EyeOff, Gauge, Trash2 } from 'lucide-react';
+import { Download, Archive, File, Loader2, Lock, Eye, EyeOff, Gauge, Trash2, Apple, Monitor } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ interface DownloadButtonProps {
   fileCount: number;
   isProcessing: boolean;
   folderName: string | null;
+  progress: { current: number; total: number } | null;
   onDownloadZip: (filename: string, options?: ZipOptions) => Promise<void>;
   onDownloadSingle: () => void;
 }
@@ -20,6 +22,7 @@ export function DownloadButton({
   fileCount,
   isProcessing,
   folderName,
+  progress,
   onDownloadZip,
   onDownloadSingle,
 }: DownloadButtonProps) {
@@ -50,6 +53,7 @@ export function DownloadButton({
       const options: ZipOptions = {
         compressionLevel: settings.compressionLevel,
         excludeSystemFiles: settings.excludeSystemFiles,
+        targetForm: settings.normalizationForm,
       };
       if (password.trim()) {
         options.password = password.trim();
@@ -145,6 +149,45 @@ export function DownloadButton({
               </div>
             </div>
 
+            {/* Normalization direction */}
+            <div className="flex items-center gap-3">
+              <Label className="flex items-center gap-2 text-muted-foreground whitespace-nowrap w-16">
+                방향
+              </Label>
+              <div className="flex-1 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateSetting('normalizationForm', 'NFC')}
+                  className={cn(
+                    "flex-1 px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium flex items-center justify-center gap-1.5",
+                    settings.normalizationForm === 'NFC'
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-transparent bg-secondary text-muted-foreground hover:bg-secondary/80"
+                  )}
+                  aria-label="Mac에서 Windows로 (NFD → NFC)"
+                >
+                  <Apple className="w-4 h-4" />
+                  →
+                  <Monitor className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateSetting('normalizationForm', 'NFD')}
+                  className={cn(
+                    "flex-1 px-3 py-1.5 rounded-lg border-2 transition-all text-sm font-medium flex items-center justify-center gap-1.5",
+                    settings.normalizationForm === 'NFD'
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-transparent bg-secondary text-muted-foreground hover:bg-secondary/80"
+                  )}
+                  aria-label="Windows에서 Mac으로 (NFC → NFD)"
+                >
+                  <Monitor className="w-4 h-4" />
+                  →
+                  <Apple className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
             {/* Compression level */}
             <div className="flex items-center gap-3">
               <Label className="flex items-center gap-2 text-muted-foreground whitespace-nowrap w-16">
@@ -225,7 +268,7 @@ export function DownloadButton({
           {isProcessing ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              압축 중...
+              {progress ? `압축 중... ${progress.current}/${progress.total}` : '압축 중...'}
             </>
           ) : (
             <>
@@ -244,6 +287,13 @@ export function DownloadButton({
             </>
           )}
         </Button>
+        {isProcessing && progress && (
+          <Progress
+            value={(progress.current / progress.total) * 100}
+            className="mt-2"
+            aria-label={`압축 진행: ${progress.current}/${progress.total}`}
+          />
+        )}
       </CardContent>
     </Card>
   );
