@@ -4,15 +4,15 @@ import { useKeyboardShortcuts, type ShortcutMap } from './useKeyboardShortcuts';
 
 describe('useKeyboardShortcuts', () => {
   let actions: ShortcutMap;
-  let downloadHandler: ReturnType<typeof vi.fn>;
+  let downloadHandler: (event: KeyboardEvent) => void;
 
   beforeEach(() => {
-    downloadHandler = vi.fn();
+    downloadHandler = vi.fn() as (event: KeyboardEvent) => void;
     actions = {
-      'mod+o': vi.fn(),
-      'mod+shift+o': vi.fn(),
+      'mod+o': vi.fn() as (event: KeyboardEvent) => void,
+      'mod+shift+o': vi.fn() as (event: KeyboardEvent) => void,
       'enter': downloadHandler,
-      'escape': vi.fn(),
+      'escape': vi.fn() as (event: KeyboardEvent) => void,
     };
   });
 

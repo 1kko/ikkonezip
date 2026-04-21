@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { AlertCircle, Zap } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { FileUploader } from '@/components/FileUploader';
@@ -7,6 +7,7 @@ import { DownloadButton } from '@/components/DownloadButton';
 import { ZipPasswordPrompt } from '@/components/ZipPasswordPrompt';
 import { Footer } from '@/components/Footer';
 import { useFileProcessor } from '@/hooks/useFileProcessor';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { Card, CardContent } from '@/components/ui/card';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || '맥윈집';
@@ -31,6 +32,31 @@ function App() {
   useEffect(() => {
     document.title = `${APP_NAME} - 한글 파일명 정규화 & 압축`;
   }, []);
+
+  const shortcuts = useMemo(() => ({
+    'mod+o': () => {
+      const input = document.querySelector<HTMLInputElement>(
+        'input[type="file"]:not([webkitdirectory])'
+      );
+      input?.click();
+    },
+    'mod+shift+o': () => {
+      const input = document.querySelector<HTMLInputElement>(
+        'input[type="file"][webkitdirectory]'
+      );
+      input?.click();
+    },
+    'enter': () => {
+      if (files.length > 0 && !isProcessing) {
+        void downloadAsZip();
+      }
+    },
+    'escape': () => {
+      if (files.length > 0) clearFiles();
+    },
+  }), [files.length, isProcessing, downloadAsZip, clearFiles]);
+
+  useKeyboardShortcuts(shortcuts);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
