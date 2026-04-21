@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { FileText, Trash2, AlertTriangle } from 'lucide-react';
 import type { ProcessedFile } from '@/hooks/useFileProcessor';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileListRow } from './FileListRow';
+import { FileListSearch } from './FileListSearch';
 import { formatFileSize } from '@/utils/formatFileSize';
 
 interface FileListProps {
@@ -16,6 +17,19 @@ interface FileListProps {
 
 export function FileList({ files, onRemoveFiles, onRename }: FileListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const showSearch = files.length >= 50;
+  const normalizedQuery = useMemo(
+    () => searchQuery.trim().toLowerCase(),
+    [searchQuery]
+  );
+  const visibleFiles = useMemo(() => {
+    if (normalizedQuery.length === 0) return files;
+    return files.filter((f) =>
+      f.normalizedName.toLowerCase().includes(normalizedQuery)
+    );
+  }, [files, normalizedQuery]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -31,12 +45,17 @@ export function FileList({ files, onRemoveFiles, onRename }: FileListProps) {
 
   const toggleSelectAll = useCallback(() => {
     setSelectedIds(prev => {
-      if (prev.size === files.length) {
-        return new Set();
+      const visibleIds = visibleFiles.map((f) => f.id);
+      const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        for (const id of visibleIds) next.delete(id);
+      } else {
+        for (const id of visibleIds) next.add(id);
       }
-      return new Set(files.map(f => f.id));
+      return next;
     });
-  }, [files]);
+  }, [visibleFiles]);
 
   const handleRemoveSelected = useCallback(() => {
     if (selectedIds.size === 0) return;
@@ -50,7 +69,7 @@ export function FileList({ files, onRemoveFiles, onRename }: FileListProps) {
 
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
   const filesNeedingNormalization = files.filter(f => f.needsNormalization).length;
-  const allSelected = selectedIds.size === files.length;
+  const allVisibleSelected = visibleFiles.length > 0 && visibleFiles.every(f => selectedIds.has(f.id));
 
   return (
     <Card className="animate-fadeIn">
@@ -87,18 +106,29 @@ export function FileList({ files, onRemoveFiles, onRename }: FileListProps) {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
+        {showSearch && (
+          <div className="flex items-center justify-between gap-3 px-4 pt-3">
+            <FileListSearch value={searchQuery} onChange={setSearchQuery} />
+            {normalizedQuery.length > 0 && (
+              <Badge variant="secondary">
+                검색 활성: {visibleFiles.length}개 표시
+              </Badge>
+            )}
+          </div>
+        )}
         <ScrollArea className="max-h-72 custom-scrollbar pr-2">
           <div className="space-y-2">
             <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
               <input
                 type="checkbox"
-                checked={allSelected}
+                aria-label="전체 선택"
+                checked={allVisibleSelected}
                 onChange={toggleSelectAll}
                 className="w-3.5 h-3.5 rounded border-input accent-primary cursor-pointer"
               />
               전체 선택
             </label>
-            {files.map((file) => (
+            {visibleFiles.map((file) => (
               <FileListRow
                 key={file.id}
                 file={file}

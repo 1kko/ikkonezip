@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
 import { FileList } from './FileList';
 import type { ProcessedFile } from '@/hooks/useFileProcessor';
 
@@ -67,5 +68,95 @@ describe('FileList', () => {
     render(<FileList files={[makeFile({ id: '1' })]} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
     const removeBtn = screen.getByRole('button', { name: /선택 삭제/ });
     expect(removeBtn).toBeDisabled();
+  });
+});
+
+function makeFiles(n: number): ProcessedFile[] {
+  return Array.from({ length: n }, (_, i) => {
+    const name = `file-${String(i).padStart(3, '0')}.txt`;
+    return {
+      id: `id-${i}`,
+      file: new File(['x'], name, { type: 'text/plain' }),
+      originalName: name,
+      normalizedName: name,
+      path: name,
+      normalizedPath: name,
+      needsNormalization: false,
+      size: 1,
+    };
+  });
+}
+
+describe('FileList — search/filter at ≥50 files', () => {
+  it('does NOT render the search input when files.length < 50', () => {
+    render(
+      <FileList
+        files={makeFiles(49)}
+        onRemoveFiles={vi.fn()}
+        onRename={vi.fn()}
+      />
+    );
+    expect(screen.queryByPlaceholderText('파일 이름 검색…')).not.toBeInTheDocument();
+  });
+
+  it('renders the search input when files.length >= 50', () => {
+    render(
+      <FileList
+        files={makeFiles(50)}
+        onRemoveFiles={vi.fn()}
+        onRename={vi.fn()}
+      />
+    );
+    expect(screen.getByPlaceholderText('파일 이름 검색…')).toBeInTheDocument();
+  });
+
+  it('filters rows in real time by case-insensitive substring match on normalizedName', () => {
+    render(
+      <FileList
+        files={makeFiles(50)}
+        onRemoveFiles={vi.fn()}
+        onRename={vi.fn()}
+      />
+    );
+    const input = screen.getByPlaceholderText('파일 이름 검색…');
+    fireEvent.change(input, { target: { value: '042' } });
+
+    expect(screen.getByText('file-042.txt')).toBeInTheDocument();
+    expect(screen.queryByText('file-001.txt')).not.toBeInTheDocument();
+  });
+
+  it('shows a "검색 활성" badge when the search input has a value', () => {
+    render(
+      <FileList
+        files={makeFiles(50)}
+        onRemoveFiles={vi.fn()}
+        onRename={vi.fn()}
+      />
+    );
+    fireEvent.change(screen.getByPlaceholderText('파일 이름 검색…'), {
+      target: { value: 'foo' },
+    });
+    expect(screen.getByText(/검색 활성/)).toBeInTheDocument();
+  });
+
+  it('"전체 선택" toggles only the visible (filtered) rows', () => {
+    const onRemove = vi.fn();
+    render(
+      <FileList
+        files={makeFiles(50)}
+        onRemoveFiles={onRemove}
+        onRename={vi.fn()}
+      />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('파일 이름 검색…'), {
+      target: { value: '042' },
+    });
+
+    const selectAllCheckbox = screen.getByRole('checkbox', { name: '전체 선택' });
+    fireEvent.click(selectAllCheckbox);
+
+    fireEvent.click(screen.getByRole('button', { name: /선택 삭제/ }));
+    expect(onRemove).toHaveBeenCalledWith(['id-42']);
   });
 });
