@@ -24,7 +24,7 @@ export function Header() {
       {/* Subtitle */}
       <p className="text-lg text-muted-foreground max-w-md mx-auto leading-relaxed">
         맥에서 만든 파일의{' '}
-        <span className="font-medium text-primary">한글 파일명 깨짐</span>을
+        <span className="font-medium text-primary dark:text-violet-400">한글 파일명 깨짐</span>을
         해결하고 압축합니다
       </p>
 
