@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
         },
       }),
       VitePWA({
-        registerType: 'autoUpdate',
+        registerType: 'prompt',
         includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon-180x180.png'],
         manifest: {
           name: `${appName} - 한글 파일명 정규화 & 압축`,
