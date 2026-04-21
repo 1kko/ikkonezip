@@ -1,4 +1,5 @@
 import { FileText, Image, Archive, Code, File } from 'lucide-react';
+import { useThumbnail } from '@/hooks/useThumbnail';
 import type { ProcessedFile } from '@/hooks/useFileProcessor';
 import type { ReactNode } from 'react';
 
@@ -26,6 +27,21 @@ function getFileIcon(filename: string): ReactNode {
 }
 
 export function FileListRowMeta({ file }: FileListRowMetaProps) {
+  const thumbnailUrl = useThumbnail(file.file);
+
+  if (thumbnailUrl) {
+    return (
+      <div className="flex-shrink-0 w-4 h-4 rounded overflow-hidden bg-muted">
+        <img
+          src={thumbnailUrl}
+          alt=""
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-shrink-0">
       {getFileIcon(file.originalName)}
