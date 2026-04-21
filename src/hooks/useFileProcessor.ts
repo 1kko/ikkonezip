@@ -237,7 +237,7 @@ export function useFileProcessor(): UseFileProcessorReturn {
     try {
       const fileData: FileWithPath[] = files.map(f => ({
         file: f.file,
-        path: f.path,
+        path: f.normalizedPath,
       }));
 
       const zipBlob = await createZip(fileData, {
