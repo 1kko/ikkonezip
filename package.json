@@ -23,7 +23,17 @@
     "tailwind-merge": "^3.5.0"
   },
   "overrides": {
-    "serialize-javascript": "^7.0.3"
+    "eslint": {
+      "brace-expansion": "^1.1.13"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "brace-expansion": "^2.0.3"
+    },
+    "defu": "^6.1.5",
+    "flatted": "^3.4.2",
+    "lodash": "^4.18.0",
+    "picomatch": "^2.3.2 || ^4.0.4",
+    "serialize-javascript": "^7.0.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -46,7 +56,7 @@
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4",
+    "vite": "^7.3.2",
     "vite-plugin-html": "^3.2.2",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.18"
