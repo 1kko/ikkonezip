@@ -24,6 +24,16 @@ updates:
           - "react-dom"
           - "@types/react"
           - "@types/react-dom"
+      # ESLint core + companion packages MUST bump together: @eslint/js
+      # peer-depends on matching eslint major, and typescript-eslint
+      # tracks eslint compatibility as a release gate. Solo bumps always
+      # fail ERESOLVE (see closed #22/#23).
+      eslint:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "typescript-eslint"
+          - "eslint-plugin-*"
     commit-message:
       prefix: "deps"
     labels:
