@@ -19,7 +19,7 @@ function makeFile(overrides: Partial<ProcessedFile> = {}): ProcessedFile {
 
 describe('FileList', () => {
   it('renders nothing when files array is empty', () => {
-    const { container } = render(<FileList files={[]} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
+    const { container } = render(<FileList files={[]} onRemoveFiles={vi.fn()} onRename={vi.fn()} onReorder={vi.fn()} />);
     expect(container.firstChild).toBeNull();
   });
 
@@ -29,7 +29,7 @@ describe('FileList', () => {
       makeFile({ id: '2', path: 'b.txt' }),
       makeFile({ id: '3', path: 'c.txt' }),
     ];
-    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
+    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} onReorder={vi.fn()} />);
     expect(screen.getByText('a.txt')).toBeInTheDocument();
     expect(screen.getByText('b.txt')).toBeInTheDocument();
     expect(screen.getByText('c.txt')).toBeInTheDocument();
@@ -37,7 +37,7 @@ describe('FileList', () => {
 
   it('shows total file count badge', () => {
     const files = [makeFile({ id: '1' }), makeFile({ id: '2' })];
-    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
+    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} onReorder={vi.fn()} />);
     expect(screen.getByText('2개 파일')).toBeInTheDocument();
   });
 
@@ -46,14 +46,14 @@ describe('FileList', () => {
       makeFile({ id: '1', needsNormalization: true }),
       makeFile({ id: '2', needsNormalization: false }),
     ];
-    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
+    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} onReorder={vi.fn()} />);
     expect(screen.getByText('1개 정규화 필요')).toBeInTheDocument();
   });
 
   it('select-all toggles all rows', () => {
     const files = [makeFile({ id: '1' }), makeFile({ id: '2' })];
     const onRemoveFiles = vi.fn();
-    render(<FileList files={files} onRemoveFiles={onRemoveFiles} onRename={vi.fn()} />);
+    render(<FileList files={files} onRemoveFiles={onRemoveFiles} onRename={vi.fn()} onReorder={vi.fn()} />);
 
     const selectAll = screen.getByRole('checkbox', { name: '전체 선택' });
     fireEvent.click(selectAll);
@@ -65,7 +65,7 @@ describe('FileList', () => {
   });
 
   it('remove-selected button is disabled when nothing selected', () => {
-    render(<FileList files={[makeFile({ id: '1' })]} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
+    render(<FileList files={[makeFile({ id: '1' })]} onRemoveFiles={vi.fn()} onRename={vi.fn()} onReorder={vi.fn()} />);
     const removeBtn = screen.getByRole('button', { name: /선택 삭제/ });
     expect(removeBtn).toBeDisabled();
   });
@@ -94,6 +94,7 @@ describe('FileList — search/filter at ≥50 files', () => {
         files={makeFiles(49)}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
+        onReorder={vi.fn()}
       />
     );
     expect(screen.queryByPlaceholderText('파일 이름 검색…')).not.toBeInTheDocument();
@@ -105,6 +106,7 @@ describe('FileList — search/filter at ≥50 files', () => {
         files={makeFiles(50)}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
+        onReorder={vi.fn()}
       />
     );
     expect(screen.getByPlaceholderText('파일 이름 검색…')).toBeInTheDocument();
@@ -116,6 +118,7 @@ describe('FileList — search/filter at ≥50 files', () => {
         files={makeFiles(50)}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
+        onReorder={vi.fn()}
       />
     );
     const input = screen.getByPlaceholderText('파일 이름 검색…');
@@ -131,6 +134,7 @@ describe('FileList — search/filter at ≥50 files', () => {
         files={makeFiles(50)}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
+        onReorder={vi.fn()}
       />
     );
     fireEvent.change(screen.getByPlaceholderText('파일 이름 검색…'), {
@@ -146,6 +150,7 @@ describe('FileList — search/filter at ≥50 files', () => {
         files={makeFiles(50)}
         onRemoveFiles={onRemove}
         onRename={vi.fn()}
+        onReorder={vi.fn()}
       />
     );
 

@@ -8,14 +8,29 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileListRow } from './FileListRow';
 import { FileListSearch } from './FileListSearch';
 import { formatFileSize } from '@/utils/formatFileSize';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 
 interface FileListProps {
   files: ProcessedFile[];
   onRemoveFiles: (ids: string[]) => void;
   onRename: (id: string, newName: string) => void;
+  onReorder: (fromId: string, toId: string) => void;
 }
 
-export function FileList({ files, onRemoveFiles, onRename }: FileListProps) {
+export function FileList({ files, onRemoveFiles, onRename, onReorder }: FileListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -62,6 +77,17 @@ export function FileList({ files, onRemoveFiles, onRename }: FileListProps) {
     onRemoveFiles(Array.from(selectedIds));
     setSelectedIds(new Set());
   }, [selectedIds, onRemoveFiles]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    onReorder(String(active.id), String(over.id));
+  }, [onReorder]);
 
   if (files.length === 0) {
     return null;
@@ -128,15 +154,26 @@ export function FileList({ files, onRemoveFiles, onRename }: FileListProps) {
               />
               전체 선택
             </label>
-            {visibleFiles.map((file) => (
-              <FileListRow
-                key={file.id}
-                file={file}
-                selected={selectedIds.has(file.id)}
-                onToggleSelect={toggleSelect}
-                onRename={onRename}
-              />
-            ))}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={visibleFiles.map((f) => f.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {visibleFiles.map((file) => (
+                  <FileListRow
+                    key={file.id}
+                    file={file}
+                    selected={selectedIds.has(file.id)}
+                    onToggleSelect={toggleSelect}
+                    onRename={onRename}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           </div>
         </ScrollArea>
       </CardContent>
