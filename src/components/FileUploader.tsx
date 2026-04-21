@@ -183,14 +183,14 @@ export function FileUploader({ onFilesSelected, hideExample = false }: FileUploa
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
                   <div className="flex items-center justify-end gap-2">
                     <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    <code className="px-2 py-1 bg-red-500/10 text-red-600 dark:text-red-400 rounded text-xs font-mono truncate">
+                    <code className="px-2 py-1 bg-red-500/10 text-red-700 dark:text-red-400 rounded text-xs font-mono truncate">
                       ㅎㅏㄴㄱㅡㄹㅍㅏㅇㅣㄹ.txt
                     </code>
                   </div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                    <code className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded text-xs font-mono truncate">
+                    <code className="px-2 py-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded text-xs font-mono truncate">
                       한글파일.txt
                     </code>
                   </div>
@@ -200,14 +200,14 @@ export function FileUploader({ onFilesSelected, hideExample = false }: FileUploa
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
                   <div className="flex items-center justify-end gap-2">
                     <Folder className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    <code className="px-2 py-1 bg-red-500/10 text-red-600 dark:text-red-400 rounded text-xs font-mono truncate">
+                    <code className="px-2 py-1 bg-red-500/10 text-red-700 dark:text-red-400 rounded text-xs font-mono truncate">
                       ㅍㅗㄹㄷㅓㅇㅣㄹㅡㅁ/
                     </code>
                   </div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <div className="flex items-center gap-2">
                     <Folder className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                    <code className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded text-xs font-mono truncate">
+                    <code className="px-2 py-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded text-xs font-mono truncate">
                       폴더이름/
                     </code>
                   </div>
@@ -217,14 +217,14 @@ export function FileUploader({ onFilesSelected, hideExample = false }: FileUploa
                 <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
                   <div className="flex items-center justify-end gap-2">
                     <FolderTree className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    <code className="px-2 py-1 bg-red-500/10 text-red-600 dark:text-red-400 rounded text-xs font-mono truncate">
+                    <code className="px-2 py-1 bg-red-500/10 text-red-700 dark:text-red-400 rounded text-xs font-mono truncate">
                       ㅍㅗㄹㄷㅓ/ㅍㅏㅇㅣㄹ.zip
                     </code>
                   </div>
                   <ArrowRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   <div className="flex items-center gap-2">
                     <FolderTree className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                    <code className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded text-xs font-mono truncate">
+                    <code className="px-2 py-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded text-xs font-mono truncate">
                       폴더/파일.zip
                     </code>
                   </div>
