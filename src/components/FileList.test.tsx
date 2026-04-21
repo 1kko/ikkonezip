@@ -8,7 +8,7 @@ function makeFile(overrides: Partial<ProcessedFile> = {}): ProcessedFile {
     id: overrides.id ?? `file-${Math.random()}`,
     file: new File(['x'], overrides.originalName ?? 'a.txt'),
     originalName: overrides.originalName ?? 'a.txt',
-    normalizedName: overrides.normalizedName ?? 'a.txt',
+    normalizedName: overrides.normalizedName ?? overrides.path ?? 'a.txt',
     path: overrides.path ?? 'a.txt',
     normalizedPath: overrides.normalizedPath ?? 'a.txt',
     needsNormalization: overrides.needsNormalization ?? false,
@@ -18,7 +18,7 @@ function makeFile(overrides: Partial<ProcessedFile> = {}): ProcessedFile {
 
 describe('FileList', () => {
   it('renders nothing when files array is empty', () => {
-    const { container } = render(<FileList files={[]} onRemoveFiles={vi.fn()} />);
+    const { container } = render(<FileList files={[]} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
     expect(container.firstChild).toBeNull();
   });
 
@@ -28,7 +28,7 @@ describe('FileList', () => {
       makeFile({ id: '2', path: 'b.txt' }),
       makeFile({ id: '3', path: 'c.txt' }),
     ];
-    render(<FileList files={files} onRemoveFiles={vi.fn()} />);
+    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
     expect(screen.getByText('a.txt')).toBeInTheDocument();
     expect(screen.getByText('b.txt')).toBeInTheDocument();
     expect(screen.getByText('c.txt')).toBeInTheDocument();
@@ -36,7 +36,7 @@ describe('FileList', () => {
 
   it('shows total file count badge', () => {
     const files = [makeFile({ id: '1' }), makeFile({ id: '2' })];
-    render(<FileList files={files} onRemoveFiles={vi.fn()} />);
+    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
     expect(screen.getByText('2개 파일')).toBeInTheDocument();
   });
 
@@ -45,14 +45,14 @@ describe('FileList', () => {
       makeFile({ id: '1', needsNormalization: true }),
       makeFile({ id: '2', needsNormalization: false }),
     ];
-    render(<FileList files={files} onRemoveFiles={vi.fn()} />);
+    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
     expect(screen.getByText('1개 정규화 필요')).toBeInTheDocument();
   });
 
   it('select-all toggles all rows', () => {
     const files = [makeFile({ id: '1' }), makeFile({ id: '2' })];
     const onRemoveFiles = vi.fn();
-    render(<FileList files={files} onRemoveFiles={onRemoveFiles} />);
+    render(<FileList files={files} onRemoveFiles={onRemoveFiles} onRename={vi.fn()} />);
 
     const selectAll = screen.getByRole('checkbox', { name: '전체 선택' });
     fireEvent.click(selectAll);
@@ -64,7 +64,7 @@ describe('FileList', () => {
   });
 
   it('remove-selected button is disabled when nothing selected', () => {
-    render(<FileList files={[makeFile({ id: '1' })]} onRemoveFiles={vi.fn()} />);
+    render(<FileList files={[makeFile({ id: '1' })]} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
     const removeBtn = screen.getByRole('button', { name: /선택 삭제/ });
     expect(removeBtn).toBeDisabled();
   });
