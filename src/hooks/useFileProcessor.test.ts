@@ -758,4 +758,71 @@ describe('useFileProcessor', () => {
       expect(downloadSingleFile).toHaveBeenCalled();
     });
   });
+
+  describe('rename persists into ZIP entry path', () => {
+    it('uses the renamed normalizedPath, not the original upload path', async () => {
+      const zipFiles = await import('@/utils/zipFiles');
+      const origCreateZip = zipFiles.createZip;
+      vi.spyOn(zipFiles, 'createZip').mockResolvedValueOnce(new Blob());
+
+      const { result } = renderHook(() => useFileProcessor());
+
+      const file = new File(['hi'], 'original.txt', { type: 'text/plain' });
+      await act(async () => {
+        await result.current.addFiles([file]);
+      });
+      const id = result.current.files[0].id;
+
+      act(() => {
+        result.current.renameFile(id, 'renamed.txt');
+      });
+
+      await act(async () => {
+        await result.current.downloadAsZip();
+      });
+
+      const createZipMock = vi.mocked(zipFiles.createZip);
+      expect(createZipMock).toHaveBeenCalledTimes(1);
+      const passedFiles = createZipMock.mock.calls[0][0];
+      expect(passedFiles).toHaveLength(1);
+      expect(passedFiles[0].path).toBe('renamed.txt');
+
+      // Restore
+      vi.mocked(zipFiles.createZip).mockImplementation(origCreateZip);
+    });
+
+    it('preserves folder depth on rename', async () => {
+      const zipFiles = await import('@/utils/zipFiles');
+      const origCreateZip = zipFiles.createZip;
+      vi.spyOn(zipFiles, 'createZip').mockResolvedValueOnce(new Blob());
+
+      const { result } = renderHook(() => useFileProcessor());
+
+      const file = new File(['hi'], 'foo.txt', { type: 'text/plain' });
+      Object.defineProperty(file, 'webkitRelativePath', {
+        value: 'docs/foo.txt',
+        writable: false,
+      });
+      await act(async () => {
+        await result.current.addFiles([file]);
+      });
+      const id = result.current.files[0].id;
+
+      act(() => {
+        result.current.renameFile(id, 'bar.txt');
+      });
+
+      await act(async () => {
+        await result.current.downloadAsZip();
+      });
+
+      const createZipMock = vi.mocked(zipFiles.createZip);
+      expect(createZipMock).toHaveBeenCalledTimes(1);
+      const passedFiles = createZipMock.mock.calls[0][0];
+      expect(passedFiles[0].path).toBe('docs/bar.txt');
+
+      // Restore
+      vi.mocked(zipFiles.createZip).mockImplementation(origCreateZip);
+    });
+  });
 });
