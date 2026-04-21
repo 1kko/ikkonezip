@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { AlertCircle, Zap } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { FileUploader } from '@/components/FileUploader';
@@ -9,6 +9,8 @@ import { Footer } from '@/components/Footer';
 import { useFileProcessor } from '@/hooks/useFileProcessor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { Card, CardContent } from '@/components/ui/card';
+import { PreviewModal } from '@/components/PreviewModal';
+import type { ZipOptions } from '@/utils/zipFiles';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || '맥윈집';
 
@@ -62,6 +64,19 @@ function App() {
 
   useKeyboardShortcuts(shortcuts);
 
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const pendingDownloadRef = useRef<{ zipFilename: string; options?: ZipOptions } | null>(null);
+
+  const downloadWithPreview = async (zipFilename: string, options?: ZipOptions) => {
+    const anyNeedsNormalization = files.some((f) => f.needsNormalization);
+    if (anyNeedsNormalization) {
+      pendingDownloadRef.current = { zipFilename, options };
+      setPreviewOpen(true);
+      return;
+    }
+    await downloadAsZip(zipFilename, options);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
       <div className="container mx-auto px-4 py-12 max-w-2xl">
@@ -107,7 +122,7 @@ function App() {
             isProcessing={isProcessing}
             folderName={folderName}
             progress={progress}
-            onDownloadZip={downloadAsZip}
+            onDownloadZip={downloadWithPreview}
             onDownloadSingle={downloadSingle}
           />
 
@@ -124,6 +139,21 @@ function App() {
             </div>
           )}
         </main>
+
+        <PreviewModal
+          open={previewOpen}
+          files={files}
+          onConfirm={async () => {
+            setPreviewOpen(false);
+            const args = pendingDownloadRef.current;
+            pendingDownloadRef.current = null;
+            if (args) await downloadAsZip(args.zipFilename, args.options);
+          }}
+          onCancel={() => {
+            setPreviewOpen(false);
+            pendingDownloadRef.current = null;
+          }}
+        />
 
         {/* Footer */}
         <footer className="mt-16 text-center">
