@@ -8,9 +8,10 @@ interface FileListRowProps {
   file: ProcessedFile;
   selected: boolean;
   onToggleSelect: (id: string) => void;
+  onRename: (id: string, newName: string) => void;
 }
 
-export function FileListRow({ file, selected, onToggleSelect }: FileListRowProps) {
+export function FileListRow({ file, selected, onToggleSelect, onRename }: FileListRowProps) {
   return (
     <div
       className="group flex items-center gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
@@ -25,7 +26,7 @@ export function FileListRow({ file, selected, onToggleSelect }: FileListRowProps
         className="flex-shrink-0 w-3.5 h-3.5 rounded border-input accent-primary cursor-pointer"
       />
       <FileListRowMeta file={file} />
-      <FileListRowFilename file={file} />
+      <FileListRowFilename file={file} onRename={onRename} />
       {file.needsNormalization && (
         <Badge variant="warning" className="flex-shrink-0 text-[10px] px-1.5 py-0">
           NFD

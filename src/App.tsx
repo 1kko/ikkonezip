@@ -24,6 +24,7 @@ function App() {
     progress,
     addFiles,
     removeFiles,
+    renameFile,
     clearFiles,
     downloadAsZip,
     downloadSingle,
@@ -114,6 +115,7 @@ function App() {
           <FileList
             files={files}
             onRemoveFiles={removeFiles}
+            onRename={renameFile}
           />
 
           {/* Download section */}

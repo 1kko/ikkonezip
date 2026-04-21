@@ -11,9 +11,10 @@ import { formatFileSize } from '@/utils/formatFileSize';
 interface FileListProps {
   files: ProcessedFile[];
   onRemoveFiles: (ids: string[]) => void;
+  onRename: (id: string, newName: string) => void;
 }
 
-export function FileList({ files, onRemoveFiles }: FileListProps) {
+export function FileList({ files, onRemoveFiles, onRename }: FileListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const toggleSelect = useCallback((id: string) => {
@@ -103,6 +104,7 @@ export function FileList({ files, onRemoveFiles }: FileListProps) {
                 file={file}
                 selected={selectedIds.has(file.id)}
                 onToggleSelect={toggleSelect}
+                onRename={onRename}
               />
             ))}
           </div>
