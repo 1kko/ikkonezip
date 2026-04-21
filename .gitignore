@@ -47,6 +47,7 @@ coverage
 .openchrome
 .playwright-mcp
 .claude/local-*
+.superpowers
 
 # Lighthouse CI run output
 .lighthouseci
