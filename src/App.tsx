@@ -18,6 +18,7 @@ function App() {
     error,
     folderName,
     needsPassword,
+    progress,
     addFiles,
     removeFiles,
     clearFiles,
@@ -75,6 +76,7 @@ function App() {
             fileCount={files.length}
             isProcessing={isProcessing}
             folderName={folderName}
+            progress={progress}
             onDownloadZip={downloadAsZip}
             onDownloadSingle={downloadSingle}
           />
