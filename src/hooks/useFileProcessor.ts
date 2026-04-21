@@ -228,9 +228,11 @@ export function useFileProcessor(): UseFileProcessorReturn {
 
     setIsProcessing(true);
     setError(null);
-    // progress stays null until createZip's first onProgress callback fires
-    // with the authoritative total (post-filter). UI falls back to spinner
-    // while progress is null, so this just avoids a brief mismatched total.
+    // Initialize progress immediately so the bar appears at 0/N as soon as
+    // zipping begins. createZip's first onProgress callback overwrites this
+    // with the post-filter total — slight transient mismatch is invisible to
+    // users compared to the bar simply not appearing for small/fast zips.
+    setProgress({ current: 0, total: files.length });
 
     try {
       const fileData: FileWithPath[] = files.map(f => ({
