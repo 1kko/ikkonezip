@@ -80,6 +80,33 @@ describe('useKeyboardShortcuts', () => {
     expect(downloadHandler).not.toHaveBeenCalled();
   });
 
+  it('does not fire when key is not in the shortcuts map', () => {
+    renderHook(() => useKeyboardShortcuts(actions));
+    fireKey('q'); // no handler registered for plain 'q'
+    expect(actions['enter']).not.toHaveBeenCalled();
+    expect(actions['mod+o']).not.toHaveBeenCalled();
+  });
+
+  it('builds combo with alt modifier', () => {
+    const actionsWithAlt: ShortcutMap = {
+      ...actions,
+      'mod+alt+o': vi.fn() as (event: KeyboardEvent) => void,
+    };
+    renderHook(() => useKeyboardShortcuts(actionsWithAlt));
+    fireKey('o', { metaKey: true, altKey: true });
+    expect(actionsWithAlt['mod+alt+o']).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires when target is a non-editable HTMLElement (e.g., a div)', () => {
+    const div = document.createElement('div');
+    document.body.appendChild(div);
+    div.focus();
+
+    renderHook(() => useKeyboardShortcuts(actions));
+    div.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(downloadHandler).toHaveBeenCalledTimes(1);
+  });
+
   it('removes listener on unmount', () => {
     const { unmount } = renderHook(() => useKeyboardShortcuts(actions));
     unmount();
