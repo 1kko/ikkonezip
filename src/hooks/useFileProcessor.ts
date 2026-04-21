@@ -194,7 +194,8 @@ export function useFileProcessor(): UseFileProcessorReturn {
   const renameFile = useCallback((id: string, newName: string) => {
     // Strip path separators (forward + backslash) and null bytes — defense
     // against path-injection in case the rename ever flows to a server path.
-    const sanitized = newName.replace(/[\/\\\x00]/g, '').trim();
+    // eslint-disable-next-line no-control-regex
+    const sanitized = newName.replace(/[/\\\x00]/g, '').trim();
     if (sanitized.length === 0) return;
 
     setFiles((prev) =>
