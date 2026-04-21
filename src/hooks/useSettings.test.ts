@@ -39,6 +39,11 @@ describe('useSettings', () => {
       const { result } = renderHook(() => useSettings());
       expect(result.current.settings.compressSingle).toBe(true);
     });
+
+    it('returns default normalizationForm of NFC', () => {
+      const { result } = renderHook(() => useSettings());
+      expect(result.current.settings.normalizationForm).toBe('NFC');
+    });
   });
 
   describe('loading from localStorage', () => {
@@ -117,6 +122,27 @@ describe('useSettings', () => {
 
       expect(result.current.settings.compressionLevel).toBe(9);
       expect(result.current.settings.excludeSystemFiles).toBe(false);
+    });
+
+    it('updates normalizationForm', () => {
+      const { result } = renderHook(() => useSettings());
+
+      act(() => {
+        result.current.updateSetting('normalizationForm', 'NFD');
+      });
+
+      expect(result.current.settings.normalizationForm).toBe('NFD');
+    });
+
+    it('persists normalizationForm to localStorage', () => {
+      const { result } = renderHook(() => useSettings());
+
+      act(() => {
+        result.current.updateSetting('normalizationForm', 'NFD');
+      });
+
+      const stored = JSON.parse(mockStorage.getItem(STORAGE_KEY)!);
+      expect(stored.normalizationForm).toBe('NFD');
     });
   });
 });

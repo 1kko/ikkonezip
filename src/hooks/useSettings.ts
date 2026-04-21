@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import type { NormalizationForm } from '@/utils/normalizeFilename';
 
 const STORAGE_KEY = 'ikkonezip-settings';
 
@@ -6,12 +7,14 @@ export interface Settings {
   compressionLevel: 0 | 5 | 9;
   excludeSystemFiles: boolean;
   compressSingle: boolean;
+  normalizationForm: NormalizationForm;
 }
 
 const DEFAULT_SETTINGS: Settings = {
   compressionLevel: 5,
   excludeSystemFiles: true,
   compressSingle: true,
+  normalizationForm: 'NFC',
 };
 
 function loadSettings(): Settings {
