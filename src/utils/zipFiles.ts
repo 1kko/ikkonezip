@@ -1,5 +1,5 @@
 import { BlobWriter, BlobReader, ZipWriter } from '@zip.js/zip.js';
-import { normalizeFilename } from './normalizeFilename';
+import { normalizeFilename, type NormalizationForm } from './normalizeFilename';
 
 export interface FileWithPath {
   file: File;
@@ -10,6 +10,13 @@ export interface ZipOptions {
   password?: string;
   compressionLevel?: number; // 0 (저장만) ~ 9 (최대 압축), 기본값: 5
   excludeSystemFiles?: boolean; // 시스템 파일 제외 여부, 기본값: true
+  /** Unicode normalization form for output filenames. @defaultValue 'NFC' */
+  targetForm?: NormalizationForm;
+  /**
+   * Called as entries finish compressing.
+   * `current` = entries completed so far, `total` = total entries to write.
+   */
+  onProgress?: (current: number, total: number) => void;
 }
 
 // Files to exclude from ZIP
@@ -35,40 +42,41 @@ export function getDatePrefix(): string {
 }
 
 /**
- * Creates a ZIP file with normalized (NFC) filenames.
+ * Creates a ZIP file with normalized filenames.
  * Excludes .DS_Store and other system files.
  * Supports password encryption (AES-256, Windows compatible).
  */
 export async function createZip(files: FileWithPath[], options: ZipOptions = {}): Promise<Blob> {
   const zipFileWriter = new BlobWriter('application/zip');
 
-  // Configure ZipWriter with optional password (AES-256 encryption)
   const compressionLevel = options.compressionLevel ?? 5;
+  const targetForm = options.targetForm ?? 'NFC';
+  const excludeSystemFiles = options.excludeSystemFiles ?? true;
+
   const zipWriter = new ZipWriter(zipFileWriter, {
     password: options.password || undefined,
     encryptionStrength: 3, // AES-256
     level: compressionLevel as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9,
   });
 
-  let fileCount = 0;
+  // Pre-filter so total reflects the actual entry count
+  const eligible = excludeSystemFiles
+    ? files.filter(({ path }) => !shouldExclude(path))
+    : files;
 
-  const excludeSystemFiles = options.excludeSystemFiles ?? true;
-
-  for (const { file, path } of files) {
-    // Skip excluded files if option is enabled
-    if (excludeSystemFiles && shouldExclude(path)) {
-      continue;
-    }
-
-    const normalizedPath = normalizeFilename(path);
-    await zipWriter.add(normalizedPath, new BlobReader(file));
-    fileCount++;
-  }
-
-  // If no files remain after filtering, throw error
-  if (fileCount === 0) {
+  if (eligible.length === 0) {
     await zipWriter.close();
     throw new Error('압축할 파일이 없습니다');
+  }
+
+  const total = eligible.length;
+  let completed = 0;
+
+  for (const { file, path } of eligible) {
+    const normalizedPath = normalizeFilename(path, targetForm);
+    await zipWriter.add(normalizedPath, new BlobReader(file));
+    completed++;
+    options.onProgress?.(completed, total);
   }
 
   await zipWriter.close();

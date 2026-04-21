@@ -169,6 +169,48 @@ describe('createZip', () => {
     expect(entries[0].encrypted).toBe(true);
     await reader.close();
   });
+
+  it('uses NFC normalization by default', async () => {
+    const nfdName = '\u1100\u1161.txt'; // 가 (NFD)
+    const file = new File(['x'], nfdName, { type: 'text/plain' });
+    const blob = await createZip([{ file, path: nfdName }]);
+    // Read back to verify entry name
+    const reader = new ZipReader(new BlobReader(blob));
+    const entries = await reader.getEntries();
+    await reader.close();
+    expect(entries[0].filename).toBe('\uAC00.txt'); // NFC composed
+  });
+
+  it('uses NFD normalization when targetForm is NFD', async () => {
+    const nfcName = '\uAC00.txt'; // 가 (NFC)
+    const file = new File(['x'], nfcName, { type: 'text/plain' });
+    const blob = await createZip([{ file, path: nfcName }], { targetForm: 'NFD' });
+    const reader = new ZipReader(new BlobReader(blob));
+    const entries = await reader.getEntries();
+    await reader.close();
+    expect(entries[0].filename).toBe('\u1100\u1161.txt'); // NFD decomposed
+  });
+
+  it('calls onProgress at least once during a multi-file zip', async () => {
+    const onProgress = vi.fn();
+    const files = [
+      { file: new File(['a'.repeat(1000)], 'a.txt'), path: 'a.txt' },
+      { file: new File(['b'.repeat(1000)], 'b.txt'), path: 'b.txt' },
+      { file: new File(['c'.repeat(1000)], 'c.txt'), path: 'c.txt' },
+    ];
+    await createZip(files, { onProgress });
+    expect(onProgress).toHaveBeenCalled();
+    // Progress should report final total of 3 entries
+    const lastCall = onProgress.mock.calls[onProgress.mock.calls.length - 1];
+    expect(lastCall).toEqual([3, 3]);
+  });
+
+  it('does not call onProgress when not provided', async () => {
+    // Just make sure no crash when options omits onProgress
+    const file = new File(['x'], 'a.txt');
+    const blob = await createZip([{ file, path: 'a.txt' }]);
+    expect(blob.size).toBeGreaterThan(0);
+  });
 });
 
 describe('downloadBlob', () => {
