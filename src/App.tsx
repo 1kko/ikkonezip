@@ -95,7 +95,7 @@ function App() {
 
         {/* Footer */}
         <footer className="mt-16 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary text-sm text-muted-foreground">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary text-sm text-secondary-foreground">
             <Zap className="w-4 h-4 text-primary" />
             NFD → NFC 변환으로 한글 파일명 호환성 해결
           </div>
