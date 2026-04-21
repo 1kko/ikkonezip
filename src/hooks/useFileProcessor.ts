@@ -24,6 +24,7 @@ export interface UseFileProcessorReturn {
   addFiles: (fileList: FileList | File[]) => Promise<void>;
   removeFile: (id: string) => void;
   removeFiles: (ids: string[]) => void;
+  renameFile: (id: string, newName: string) => void;
   clearFiles: () => void;
   downloadAsZip: (zipFilename?: string, options?: ZipOptions) => Promise<void>;
   downloadSingle: () => void;
@@ -190,6 +191,27 @@ export function useFileProcessor(): UseFileProcessorReturn {
     setFiles(prev => prev.filter(f => !idSet.has(f.id)));
   }, []);
 
+  const renameFile = useCallback((id: string, newName: string) => {
+    const sanitized = newName.replace(/\//g, '').trim();
+    if (sanitized.length === 0) return;
+
+    setFiles((prev) =>
+      prev.map((f) => {
+        if (f.id !== id) return f;
+        const lastSlash = f.normalizedPath.lastIndexOf('/');
+        const newPath =
+          lastSlash >= 0
+            ? f.normalizedPath.slice(0, lastSlash + 1) + sanitized
+            : sanitized;
+        return {
+          ...f,
+          normalizedName: sanitized,
+          normalizedPath: newPath,
+        };
+      })
+    );
+  }, []);
+
   const clearFiles = useCallback(() => {
     setFiles([]);
     setError(null);
@@ -257,6 +279,7 @@ export function useFileProcessor(): UseFileProcessorReturn {
     addFiles,
     removeFile,
     removeFiles,
+    renameFile,
     clearFiles,
     downloadAsZip,
     downloadSingle,

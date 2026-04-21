@@ -510,6 +510,92 @@ describe('useFileProcessor', () => {
     });
   });
 
+  describe('renameFile', () => {
+    it('updates a file\'s normalizedName and normalizedPath, leaves originalName intact', async () => {
+      const { result } = renderHook(() => useFileProcessor());
+
+      await act(async () => {
+        await result.current.addFiles([createMockFile('original.txt')]);
+      });
+
+      const id = result.current.files[0].id;
+
+      act(() => {
+        result.current.renameFile(id, 'renamed.txt');
+      });
+
+      const renamed = result.current.files.find((f) => f.id === id);
+      expect(renamed?.normalizedName).toBe('renamed.txt');
+      expect(renamed?.normalizedPath).toBe('renamed.txt');
+      expect(renamed?.originalName).toBe('original.txt');
+    });
+
+    it('preserves directory part of path when renaming', async () => {
+      const { result } = renderHook(() => useFileProcessor());
+
+      const fileWithPath = createMockFileWithPath('a.txt', 'folder/sub/a.txt');
+      await act(async () => {
+        await result.current.addFiles([fileWithPath]);
+      });
+
+      const id = result.current.files[0].id;
+      act(() => {
+        result.current.renameFile(id, 'renamed.txt');
+      });
+
+      const renamed = result.current.files.find((f) => f.id === id);
+      expect(renamed?.normalizedPath).toBe('folder/sub/renamed.txt');
+    });
+
+    it('strips slashes from the new name (path injection prevention)', async () => {
+      const { result } = renderHook(() => useFileProcessor());
+
+      await act(async () => {
+        await result.current.addFiles([createMockFile('a.txt')]);
+      });
+
+      const id = result.current.files[0].id;
+      act(() => {
+        result.current.renameFile(id, '../etc/passwd');
+      });
+
+      const renamed = result.current.files.find((f) => f.id === id);
+      expect(renamed?.normalizedName).not.toContain('/');
+      expect(renamed?.normalizedName).toBe('..etcpasswd');
+    });
+
+    it('does nothing when name is empty (after trim)', async () => {
+      const { result } = renderHook(() => useFileProcessor());
+
+      await act(async () => {
+        await result.current.addFiles([createMockFile('a.txt')]);
+      });
+
+      const id = result.current.files[0].id;
+      const before = result.current.files[0].normalizedName;
+      act(() => {
+        result.current.renameFile(id, '   ');
+      });
+
+      expect(result.current.files[0].normalizedName).toBe(before);
+    });
+
+    it('does nothing for unknown id', async () => {
+      const { result } = renderHook(() => useFileProcessor());
+
+      await act(async () => {
+        await result.current.addFiles([createMockFile('a.txt')]);
+      });
+
+      const before = result.current.files[0];
+      act(() => {
+        result.current.renameFile('nonexistent-id', 'newname.txt');
+      });
+
+      expect(result.current.files[0]).toEqual(before);
+    });
+  });
+
   describe('clearFiles', () => {
     it('removes all files', async () => {
       const { result } = renderHook(() => useFileProcessor());
