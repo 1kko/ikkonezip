@@ -10,6 +10,7 @@ import { useFileProcessor } from '@/hooks/useFileProcessor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { Card, CardContent } from '@/components/ui/card';
 import { PreviewModal } from '@/components/PreviewModal';
+import { PwaUpdateToast } from '@/components/PwaUpdateToast';
 import type { ZipOptions } from '@/utils/zipFiles';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || '맥윈집';
@@ -169,6 +170,7 @@ function App() {
           <Footer />
         </footer>
       </div>
+      <PwaUpdateToast />
     </div>
   );
 }
