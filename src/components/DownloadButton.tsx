@@ -151,10 +151,10 @@ export function DownloadButton({
 
             {/* Normalization direction */}
             <div className="flex items-center gap-3">
-              <Label className="flex items-center gap-2 text-muted-foreground whitespace-nowrap w-16">
+              <Label id="direction-label" className="flex items-center gap-2 text-muted-foreground whitespace-nowrap w-16">
                 방향
               </Label>
-              <div className="flex-1 flex gap-2">
+              <div role="group" aria-labelledby="direction-label" className="flex-1 flex gap-2">
                 <button
                   type="button"
                   onClick={() => updateSetting('normalizationForm', 'NFC')}
@@ -190,11 +190,11 @@ export function DownloadButton({
 
             {/* Compression level */}
             <div className="flex items-center gap-3">
-              <Label className="flex items-center gap-2 text-muted-foreground whitespace-nowrap w-16">
+              <Label id="compression-label" className="flex items-center gap-2 text-muted-foreground whitespace-nowrap w-16">
                 <Gauge className="w-4 h-4" />
                 압축률
               </Label>
-              <div className="flex-1 flex gap-2">
+              <div role="group" aria-labelledby="compression-label" className="flex-1 flex gap-2">
                 <button
                   type="button"
                   onClick={() => updateSetting('compressionLevel', 0)}

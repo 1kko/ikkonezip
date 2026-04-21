@@ -203,7 +203,9 @@ export function useFileProcessor(): UseFileProcessorReturn {
 
     setIsProcessing(true);
     setError(null);
-    setProgress({ current: 0, total: files.length });
+    // progress stays null until createZip's first onProgress callback fires
+    // with the authoritative total (post-filter). UI falls back to spinner
+    // while progress is null, so this just avoids a brief mismatched total.
 
     try {
       const fileData: FileWithPath[] = files.map(f => ({
