@@ -113,4 +113,37 @@ describe('useKeyboardShortcuts', () => {
     fireKey('Enter');
     expect(downloadHandler).not.toHaveBeenCalled();
   });
+
+  it('does not fire when a Radix dialog is open (lets the dialog own Escape)', () => {
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('data-state', 'open');
+    document.body.appendChild(dialog);
+
+    renderHook(() => useKeyboardShortcuts(actions));
+    fireKey('Escape');
+    expect(actions['escape']).not.toHaveBeenCalled();
+  });
+
+  it('does not fire Enter when a Radix dialog is open (avoids double-submit)', () => {
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('data-state', 'open');
+    document.body.appendChild(dialog);
+
+    renderHook(() => useKeyboardShortcuts(actions));
+    fireKey('Enter');
+    expect(downloadHandler).not.toHaveBeenCalled();
+  });
+
+  it('still fires when a closed dialog node lingers in the DOM', () => {
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('data-state', 'closed');
+    document.body.appendChild(dialog);
+
+    renderHook(() => useKeyboardShortcuts(actions));
+    fireKey('Escape');
+    expect(actions['escape']).toHaveBeenCalledTimes(1);
+  });
 });
