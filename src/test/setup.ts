@@ -1,3 +1,4 @@
+import '@testing-library/jest-dom';
 import { configure } from '@zip.js/zip.js';
 
 // Force in-thread compression in tests so timing is deterministic and we
