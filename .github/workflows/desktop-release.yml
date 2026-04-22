@@ -103,8 +103,11 @@ jobs:
           # Query the ACTUAL uploaded asset name — GitHub strips non-ASCII chars
           # at upload time, so the local DMG filename (e.g. "이코네Zip_*.dmg")
           # differs from the public asset name (e.g. "Zip_*.dmg").
-          ASSET_NAME=$(gh release view "${{ steps.version.outputs.tag }}" --json assets --jq '.assets[0].name')
-          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/$ASSET_NAME"
+          ASSET_NAME=$(gh release view "${{ steps.version.outputs.tag }}" --json assets --jq '[.assets[] | select(.name | endswith(".dmg"))][0].name')
+          # Manifest URL points at our own domain — the DMG is mirrored into the
+          # Coolify nginx image at build time (see Dockerfile). GitHub Releases
+          # remains the source-of-truth archive for the Dockerfile to fetch from.
+          DOWNLOAD_URL="https://zip.1kko.com/desktop/$ASSET_NAME"
           NOTES=$(gh release view "${{ steps.version.outputs.tag }}" --json body --jq '.body // "" | .[0:280]')
           jq -n \
             --arg version "${{ steps.version.outputs.version }}" \
