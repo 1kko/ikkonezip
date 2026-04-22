@@ -3,7 +3,11 @@
 # Run after `npm run build` so dist/ is populated.
 set -eu
 
-JS_BUDGET=512000   # 500 KB
+# Raw size budgets. Gzip ratio for this bundle is ~3.5x, so 525 KB raw is
+# ~150 KB over the wire. Bumped 500→525 KB when Phase 3 added @dnd-kit
+# (~16 KB gz, ~38 KB raw); future bundle reductions (e.g. lazy-load via
+# React.lazy) can lower this back.
+JS_BUDGET=537600   # 525 KB
 CSS_BUDGET=204800  # 200 KB
 
 JS_FILE=$(find dist/assets -maxdepth 1 -type f -name 'index-*.js' ! -name '*.map' | head -1)
