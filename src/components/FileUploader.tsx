@@ -3,43 +3,11 @@ import { Upload, FolderOpen, File as FileIcon, Folder, Archive, ArrowRight, File
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { extractFilesFromDataTransfer } from '@/utils/extractFilesFromDataTransfer';
 
 interface FileUploaderProps {
   onFilesSelected: (files: FileList | File[]) => void | Promise<void>;
   hideExample?: boolean;
-}
-
-async function traverseFileTree(
-  item: FileSystemEntry,
-  path: string,
-  files: File[]
-): Promise<void> {
-  if (item.isFile) {
-    const fileEntry = item as FileSystemFileEntry;
-    return new Promise((resolve) => {
-      fileEntry.file((file) => {
-        const fileWithPath = new File([file], file.name, { type: file.type });
-        Object.defineProperty(fileWithPath, 'webkitRelativePath', {
-          value: path + file.name,
-          writable: false,
-        });
-        files.push(fileWithPath);
-        resolve();
-      });
-    });
-  } else if (item.isDirectory) {
-    const dirEntry = item as FileSystemDirectoryEntry;
-    const dirReader = dirEntry.createReader();
-    return new Promise((resolve) => {
-      dirReader.readEntries(async (entries) => {
-        const promises = entries.map((entry) =>
-          traverseFileTree(entry, path + item.name + '/', files)
-        );
-        await Promise.all(promises);
-        resolve();
-      });
-    });
-  }
 }
 
 export function FileUploader({ onFilesSelected, hideExample = false }: FileUploaderProps) {
@@ -59,30 +27,13 @@ export function FileUploader({ onFilesSelected, hideExample = false }: FileUploa
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-
-    const items = e.dataTransfer.items;
-    if (items) {
-      const files: File[] = [];
-      const promises: Promise<void>[] = [];
-
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i].webkitGetAsEntry?.();
-        if (item) {
-          promises.push(traverseFileTree(item, '', files));
-        }
-      }
-
-      Promise.all(promises).then(() => {
-        if (files.length > 0) {
-          onFilesSelected(files);
-        }
-      });
-    } else if (e.dataTransfer.files.length > 0) {
-      onFilesSelected(e.dataTransfer.files);
+    const files = await extractFilesFromDataTransfer(e.dataTransfer);
+    if (files.length > 0) {
+      onFilesSelected(files);
     }
   }, [onFilesSelected]);
 

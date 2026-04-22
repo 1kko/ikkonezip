@@ -1,6 +1,6 @@
 // src/utils/extractFilesFromDataTransfer.ts
 
-interface FileSystemFileEntry {
+interface FsFileEntry {
   isFile: true;
   isDirectory: false;
   name: string;
@@ -8,17 +8,17 @@ interface FileSystemFileEntry {
   file(success: (file: File) => void, error?: (err: Error) => void): void;
 }
 
-interface FileSystemDirectoryEntry {
+interface FsDirectoryEntry {
   isFile: false;
   isDirectory: true;
   name: string;
   fullPath: string;
   createReader(): {
-    readEntries(success: (entries: FileSystemEntry[]) => void): void;
+    readEntries(success: (entries: FsEntry[]) => void): void;
   };
 }
 
-type FileSystemEntry = FileSystemFileEntry | FileSystemDirectoryEntry;
+type FsEntry = FsFileEntry | FsDirectoryEntry;
 
 /**
  * Pulls all File objects out of a DataTransfer, traversing folder
@@ -35,8 +35,10 @@ export async function extractFilesFromDataTransfer(dt: DataTransfer): Promise<Fi
   const collected: File[] = [];
   const promises: Promise<void>[] = [];
   for (let i = 0; i < items.length; i++) {
-    const entry = (items[i] as DataTransferItem & { webkitGetAsEntry?: () => FileSystemEntry | null })
+    // webkitGetAsEntry is not in all TS lib versions; cast via unknown to our own FsEntry shape
+    const rawEntry = (items[i] as unknown as { webkitGetAsEntry?(): unknown })
       .webkitGetAsEntry?.();
+    const entry = rawEntry as FsEntry | null | undefined;
     if (entry) {
       promises.push(traverse(entry, '', collected));
     }
@@ -51,7 +53,7 @@ export async function extractFilesFromDataTransfer(dt: DataTransfer): Promise<Fi
   return collected;
 }
 
-function traverse(entry: FileSystemEntry, path: string, out: File[]): Promise<void> {
+function traverse(entry: FsEntry, path: string, out: File[]): Promise<void> {
   return new Promise((resolve) => {
     if (entry.isFile) {
       entry.file((file) => {
@@ -74,10 +76,10 @@ function traverse(entry: FileSystemEntry, path: string, out: File[]): Promise<vo
 }
 
 function readAllEntries(
-  reader: { readEntries(cb: (entries: FileSystemEntry[]) => void): void },
-): Promise<FileSystemEntry[]> {
+  reader: { readEntries(cb: (entries: FsEntry[]) => void): void },
+): Promise<FsEntry[]> {
   return new Promise((resolve) => {
-    const all: FileSystemEntry[] = [];
+    const all: FsEntry[] = [];
     function next() {
       reader.readEntries((batch) => {
         if (batch.length === 0) {
