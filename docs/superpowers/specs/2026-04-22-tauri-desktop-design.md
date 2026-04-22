@@ -48,7 +48,16 @@ ikkonezip/
     desktop-release.yml           (NEW — builds DMG on tag push, attaches to GH release, updates desktop-latest.json)
 ```
 
-`src/` is untouched. `app/` does not import anything from `src/`. The shared artifact is `dist/`, produced by the existing `npm run build` in the repo root. The desktop build runs `npm run build` first (in the root), then `cargo tauri build` (in `app/src-tauri`).
+`src/` is untouched by Stage 1. `app/` does not import anything from `src/`. The shared artifact is `dist/`, produced by the existing `npm run build` in the repo root. The desktop build runs `npm run build` first (in the root), then `cargo tauri build` (in `app/src-tauri`).
+
+## Desktop Chrome (Hide Web-Specific UI)
+
+When running inside the Tauri WebView, the SPA hides UI elements that duplicate native chrome:
+
+- The big in-app title banner ("이코네Zip" + "맥에서 만든 파일의 한글 파일명 깨짐을 해결하고 압축합니다") — redundant with the OS title bar and dock icon.
+- The footer (theme switcher + "트래킹 없음" promise text) — desktop users get the same theme via system preferences and the no-trackers promise lives on the website / install page.
+
+These are gated by the `isTauri()` helper from Stage 2A. Web behavior is unchanged. Implementation lives in `App.tsx` as conditional `{!isTauri() && <Header />}` and `{!isTauri() && <Footer />}` wrappers.
 
 ## File Associations (motivation 2)
 
