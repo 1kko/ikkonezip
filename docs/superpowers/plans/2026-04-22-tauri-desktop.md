@@ -958,11 +958,29 @@ Expected: previous 209 + 2 (tauri) + 7 (semverGt) + 6 (checkForUpdate) + 5 (Desk
 npm run lint
 ```
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 9: Hide Header banner + Footer when running inside Tauri**
+
+Per the spec's "Desktop Chrome (Hide Web-Specific UI)" section: when `isTauri()` returns true, hide the in-app title banner (`<Header />`) and the footer (`<Footer />` or whatever the footer component is). Desktop users get OS title bar + dock icon + system theme; the SPA chrome is redundant and steals vertical space.
+
+In `src/App.tsx`, find the `<Header />` and footer renders. Wrap each:
+
+```tsx
+{!isTauri() && <Header />}
+...
+{!isTauri() && <Footer />}
+```
+
+(Adjust `Footer` import name to whatever the codebase uses — could be inline JSX inside App.tsx if there's no separate component.)
+
+If the footer is rendered inline (not a separate component), wrap that whole inline JSX block in the same conditional.
+
+Run `npx vitest run --reporter=dot` after — existing App-level tests (if any) should still pass; the conditional just gates rendering.
+
+- [ ] **Step 10: Commit**
 
 ```bash
 git add src/App.tsx
-git commit -m "Wire DesktopUpdateToast + checkForUpdate + file-opened in App"
+git commit -m "Wire DesktopUpdateToast + checkForUpdate + file-opened in App; hide chrome in Tauri"
 ```
 
 #### Task 2A.7: Add VITE_APP_VERSION at build time
