@@ -8,9 +8,13 @@ import { ZipPasswordPrompt } from '@/components/ZipPasswordPrompt';
 import { Footer } from '@/components/Footer';
 import { useFileProcessor } from '@/hooks/useFileProcessor';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useSettings } from '@/hooks/useSettings';
 import { Card, CardContent } from '@/components/ui/card';
 import { PreviewModal } from '@/components/PreviewModal';
 import { PwaUpdateToast } from '@/components/PwaUpdateToast';
+import { DesktopUpdateToast } from '@/components/DesktopUpdateToast';
+import { isTauri } from '@/utils/tauri';
+import { checkForUpdate, type UpdateManifest } from '@/utils/checkForUpdate';
 import type { ZipOptions } from '@/utils/zipFiles';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || '맥윈집';
@@ -33,6 +37,59 @@ function App() {
     submitZipPassword,
     cancelZipPassword,
   } = useFileProcessor();
+
+  const { settings } = useSettings();
+
+  const [desktopUpdate, setDesktopUpdate] = useState<UpdateManifest | null>(null);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    if (!settings.checkDesktopUpdates) return;
+    const handle = setTimeout(() => {
+      const localVersion = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? '0.0.0';
+      void checkForUpdate(localVersion).then(setDesktopUpdate);
+    }, 1500);
+    return () => clearTimeout(handle);
+  }, [settings.checkDesktopUpdates]);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+
+    const handleColdOpen = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (typeof detail === 'string') void openFromPath(detail);
+    };
+    window.addEventListener('tauri-file-opened', handleColdOpen);
+
+    let unlisten: (() => void) | null = null;
+    let mounted = true;
+    void import('@tauri-apps/api/event').then(({ listen }) =>
+      listen<string>('file-opened', ({ payload }) => {
+        if (typeof payload === 'string') void openFromPath(payload);
+      }).then((u) => {
+        if (mounted) {
+          unlisten = u;
+        } else {
+          // Component unmounted before subscription resolved — unlisten immediately.
+          u();
+        }
+      })
+    );
+
+    async function openFromPath(path: string) {
+      const { readFile } = await import('@tauri-apps/plugin-fs');
+      const bytes = await readFile(path);
+      const name = path.split('/').pop() ?? 'file.zip';
+      const file = new File([bytes], name, { type: 'application/zip' });
+      await addFiles([file]);
+    }
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('tauri-file-opened', handleColdOpen);
+      unlisten?.();
+    };
+  }, [addFiles]);
 
   useEffect(() => {
     document.title = `${APP_NAME} - 한글 파일명 정규화 & 압축`;
@@ -83,7 +140,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
       <div className="container mx-auto px-4 py-12 max-w-2xl">
-        <Header />
+        {!isTauri() && <Header />}
 
         <main className="space-y-6">
           {/* Upload section */}
@@ -164,26 +221,43 @@ function App() {
         />
 
         {/* Footer */}
-        <footer className="mt-16 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary text-sm text-secondary-foreground">
-            <Zap className="w-4 h-4 text-primary" />
-            NFD → NFC 변환으로 한글 파일명 호환성 해결
-          </div>
-          <p className="mt-4 text-xs text-muted-foreground">
-            모든 처리는 브라우저에서 이루어지며, 파일이 서버로 업로드되지 않습니다.
-          </p>
-          <p className="mt-3">
-            <a
-              href="/desktop-install.html"
-              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-            >
-              데스크톱 앱 다운로드
-            </a>
-          </p>
-          <Footer />
-        </footer>
+        {!isTauri() && (
+          <footer className="mt-16 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary text-sm text-secondary-foreground">
+              <Zap className="w-4 h-4 text-primary" />
+              NFD → NFC 변환으로 한글 파일명 호환성 해결
+            </div>
+            <p className="mt-4 text-xs text-muted-foreground">
+              모든 처리는 브라우저에서 이루어지며, 파일이 서버로 업로드되지 않습니다.
+            </p>
+            <p className="mt-3">
+              <a
+                href="/desktop-install.html"
+                className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+              >
+                데스크톱 앱 다운로드
+              </a>
+            </p>
+            <Footer />
+          </footer>
+        )}
       </div>
       <PwaUpdateToast />
+      <DesktopUpdateToast
+        manifest={desktopUpdate}
+        onDownload={() => {
+          if (!desktopUpdate) return;
+          void (async () => {
+            try {
+              const { open } = await import('@tauri-apps/plugin-shell');
+              await open(desktopUpdate.downloadUrl);
+            } catch (err) {
+              console.error('Failed to open download URL', err);
+            }
+          })();
+        }}
+        onDismiss={() => setDesktopUpdate(null)}
+      />
     </div>
   );
 }

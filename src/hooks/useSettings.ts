@@ -8,6 +8,11 @@ export interface Settings {
   excludeSystemFiles: boolean;
   compressSingle: boolean;
   normalizationForm: NormalizationForm;
+  /**
+   * If true (default), the desktop app pings desktop-latest.json on launch
+   * to surface a new-version toast. Web context ignores this setting entirely.
+   */
+  checkDesktopUpdates: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -15,6 +20,7 @@ const DEFAULT_SETTINGS: Settings = {
   excludeSystemFiles: true,
   compressSingle: true,
   normalizationForm: 'NFC',
+  checkDesktopUpdates: true,
 };
 
 function loadSettings(): Settings {

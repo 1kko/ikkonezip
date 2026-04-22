@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { createHtmlPlugin } from 'vite-plugin-html'
+import pkg from './package.json' with { type: 'json' }
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -77,6 +78,9 @@ export default defineConfig(({ mode }) => {
       }
     })
     ],
+    define: {
+      'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

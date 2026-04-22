@@ -44,6 +44,11 @@ describe('useSettings', () => {
       const { result } = renderHook(() => useSettings());
       expect(result.current.settings.normalizationForm).toBe('NFC');
     });
+
+    it('returns default checkDesktopUpdates of true', () => {
+      const { result } = renderHook(() => useSettings());
+      expect(result.current.settings.checkDesktopUpdates).toBe(true);
+    });
   });
 
   describe('loading from localStorage', () => {
