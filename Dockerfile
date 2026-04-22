@@ -18,13 +18,22 @@ COPY nginx-snippets/security_headers.conf /etc/nginx/snippets/security_headers.c
 # requiring SSH from CI to the host. The fetch is fail-soft: a transient GH
 # outage during build leaves the new image without /desktop/, but the
 # previously-running container keeps serving with the previous image.
+#
+# AUTH: ikkonezip is a private repo, so unauthenticated curl returns 404
+# (GitHub masks private-repo existence). Coolify is configured to pass a
+# fine-grained PAT (read-only on contents) as the GITHUB_TOKEN_DESKTOP_FETCH
+# build arg. If empty (e.g. local docker build without the arg), the curl
+# 404s and the fail-soft fallback skips the DMG.
+ARG GITHUB_TOKEN_DESKTOP_FETCH=""
 COPY public/desktop-latest.json /tmp/manifest.json
-RUN apk add --no-cache curl jq ca-certificates && \
+RUN apk add --no-cache curl jq && \
     VERSION=$(jq -r '.version' /tmp/manifest.json) && \
     if [ -n "$VERSION" ] && [ "$VERSION" != "null" ] && [ "$VERSION" != "0.0.0" ]; then \
       DMG="Zip_${VERSION}_universal.dmg"; \
       mkdir -p /usr/share/nginx/html/desktop; \
-      curl -fsSL --retry 3 -o "/usr/share/nginx/html/desktop/${DMG}" \
+      curl -fsSL --retry 3 \
+        -H "Authorization: Bearer ${GITHUB_TOKEN_DESKTOP_FETCH}" \
+        -o "/usr/share/nginx/html/desktop/${DMG}" \
         "https://github.com/1kko/ikkonezip/releases/download/v${VERSION}-desktop/${DMG}" \
         || echo "WARN: DMG fetch failed for v${VERSION}; /desktop/${DMG} will 404"; \
     fi && \
