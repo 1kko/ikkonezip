@@ -67,22 +67,40 @@
   animation: fadeIn 0.3s ease-out;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar — track must be visible enough to read scroll position */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+  background: hsl(240 5% 50% / 0.10);
+  border-radius: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: hsl(240 3.7% 15.9% / 0.3);
-  border-radius: 4px;
+  background: hsl(240 3.7% 15.9% / 0.45);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: hsl(240 3.7% 15.9% / 0.5);
+  background: hsl(240 3.7% 15.9% / 0.7);
+  background-clip: padding-box;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: hsl(240 5% 70% / 0.12);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(240 5% 80% / 0.4);
+  background-clip: padding-box;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(240 5% 80% / 0.65);
+  background-clip: padding-box;
 }
 
 /* Gradient flow animation */

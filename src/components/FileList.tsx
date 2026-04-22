@@ -211,7 +211,7 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder, onAddFiles
       </CardHeader>
       <CardContent className="pt-0">
         {showSearch && (
-          <div className="flex items-center justify-between gap-3 px-4 pt-3">
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
             <FileListSearch value={searchQuery} onChange={setSearchQuery} />
             {normalizedQuery.length > 0 && (
               <Badge variant="secondary">
@@ -220,7 +220,7 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder, onAddFiles
             )}
           </div>
         )}
-        <ScrollArea className="max-h-72 custom-scrollbar pr-2">
+        <ScrollArea className="max-h-72 custom-scrollbar pr-3">
           <div className="space-y-2">
             <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
               <input
