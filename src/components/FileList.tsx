@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { FileText, Trash2, AlertTriangle } from 'lucide-react';
+import { useState, useCallback, useMemo, useRef, type DragEvent } from 'react';
+import { FileText, Trash2, AlertTriangle, Plus } from 'lucide-react';
 import type { ProcessedFile } from '@/hooks/useFileProcessor';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileListRow } from './FileListRow';
 import { FileListSearch } from './FileListSearch';
 import { formatFileSize } from '@/utils/formatFileSize';
+import { cn } from '@/lib/utils';
+import { extractFilesFromDataTransfer } from '@/utils/extractFilesFromDataTransfer';
 import {
   DndContext,
   KeyboardSensor,
@@ -28,9 +30,11 @@ interface FileListProps {
   onRemoveFiles: (ids: string[]) => void;
   onRename: (id: string, newName: string) => void;
   onReorder: (fromId: string, toId: string) => void;
+  /** When provided, the file list area becomes a drop target and a "파일 추가" button appears. */
+  onAddFiles?: (files: FileList | File[]) => void;
 }
 
-export function FileList({ files, onRemoveFiles, onRename, onReorder }: FileListProps) {
+export function FileList({ files, onRemoveFiles, onRename, onReorder, onAddFiles }: FileListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -89,6 +93,47 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder }: FileList
     onReorder(String(active.id), String(over.id));
   }, [onReorder]);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+  const handleDropZoneDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    if (!onAddFiles) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(true);
+  }, [onAddFiles]);
+
+  const handleDropZoneDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    if (!onAddFiles) return;
+    e.preventDefault();
+    e.stopPropagation();
+    // Only clear when truly leaving the Card boundary, not when crossing a child.
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDraggingOver(false);
+  }, [onAddFiles]);
+
+  const handleDropZoneDrop = useCallback(async (e: DragEvent<HTMLDivElement>) => {
+    if (!onAddFiles) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+    const files = await extractFilesFromDataTransfer(e.dataTransfer);
+    if (files.length > 0) {
+      onAddFiles(files);
+    }
+  }, [onAddFiles]);
+
+  const handleAddClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFilePicked = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0 && onAddFiles) {
+      onAddFiles(e.target.files);
+      e.target.value = '';
+    }
+  }, [onAddFiles]);
+
   if (files.length === 0) {
     return null;
   }
@@ -98,7 +143,21 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder }: FileList
   const allVisibleSelected = visibleFiles.length > 0 && visibleFiles.every(f => selectedIds.has(f.id));
 
   return (
-    <Card className="animate-fadeIn">
+    <Card
+      data-dropzone="filelist"
+      className={cn(
+        "animate-fadeIn relative",
+        isDraggingOver && onAddFiles && "ring-2 ring-primary ring-offset-2"
+      )}
+      onDragOver={handleDropZoneDragOver}
+      onDragLeave={handleDropZoneDragLeave}
+      onDrop={handleDropZoneDrop}
+    >
+      {isDraggingOver && onAddFiles && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-primary/10 backdrop-blur-sm">
+          <span className="text-lg font-semibold text-primary">여기에 놓아 추가</span>
+        </div>
+      )}
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 flex-wrap">
@@ -116,6 +175,25 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder }: FileList
               </Badge>
             )}
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={handleFilePicked}
+          />
+          {onAddFiles && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddClick}
+              className="gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              파일 추가
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"

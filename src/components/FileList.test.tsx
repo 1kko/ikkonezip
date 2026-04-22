@@ -4,6 +4,8 @@ import '@testing-library/jest-dom/vitest';
 import { FileList } from './FileList';
 import type { ProcessedFile } from '@/hooks/useFileProcessor';
 
+
+
 function makeFile(overrides: Partial<ProcessedFile> = {}): ProcessedFile {
   return {
     id: overrides.id ?? `file-${Math.random()}`,
@@ -163,5 +165,88 @@ describe('FileList — search/filter at ≥50 files', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /선택 삭제/ }));
     expect(onRemove).toHaveBeenCalledWith(['id-42']);
+  });
+});
+
+describe('FileList — add files (Phase 4)', () => {
+  function makeFile(name: string): ProcessedFile {
+    return {
+      id: `id-${name}`,
+      file: new File(['x'], name, { type: 'text/plain' }),
+      originalName: name,
+      normalizedName: name,
+      path: name,
+      normalizedPath: name,
+      needsNormalization: false,
+      size: 1,
+    };
+  }
+
+  it('renders a "파일 추가" button when onAddFiles is provided', () => {
+    render(
+      <FileList
+        files={[makeFile('a.txt')]}
+        onRemoveFiles={vi.fn()}
+        onRename={vi.fn()}
+        onReorder={vi.fn()}
+        onAddFiles={vi.fn()}
+      />
+    );
+    expect(screen.getByRole('button', { name: '파일 추가' })).toBeInTheDocument();
+  });
+
+  it('does NOT render "파일 추가" button when onAddFiles is not provided', () => {
+    render(
+      <FileList
+        files={[makeFile('a.txt')]}
+        onRemoveFiles={vi.fn()}
+        onRename={vi.fn()}
+        onReorder={vi.fn()}
+      />
+    );
+    expect(screen.queryByRole('button', { name: '파일 추가' })).not.toBeInTheDocument();
+  });
+
+  it('calls onAddFiles with dropped files', async () => {
+    const onAddFiles = vi.fn();
+    const { container } = render(
+      <FileList
+        files={[makeFile('a.txt')]}
+        onRemoveFiles={vi.fn()}
+        onRename={vi.fn()}
+        onReorder={vi.fn()}
+        onAddFiles={onAddFiles}
+      />
+    );
+    const dropZone = container.querySelector('[data-dropzone="filelist"]');
+    expect(dropZone).not.toBeNull();
+
+    const newFile = new File(['new'], 'b.txt', { type: 'text/plain' });
+    const dt = {
+      files: [newFile] as unknown as FileList,
+      items: [] as unknown as DataTransferItemList,
+    } as DataTransfer;
+    fireEvent.drop(dropZone!, { dataTransfer: dt });
+    await new Promise(r => setTimeout(r, 0));
+    expect(onAddFiles).toHaveBeenCalledTimes(1);
+    expect(onAddFiles.mock.calls[0][0]).toHaveLength(1);
+    expect((onAddFiles.mock.calls[0][0] as File[])[0].name).toBe('b.txt');
+  });
+
+  it('shows the drag overlay when a file is dragged over', () => {
+    const { container } = render(
+      <FileList
+        files={[makeFile('a.txt')]}
+        onRemoveFiles={vi.fn()}
+        onRename={vi.fn()}
+        onReorder={vi.fn()}
+        onAddFiles={vi.fn()}
+      />
+    );
+    const dropZone = container.querySelector('[data-dropzone="filelist"]')!;
+    fireEvent.dragOver(dropZone, { dataTransfer: { files: [] as unknown as FileList, items: [] as unknown as DataTransferItemList } });
+    expect(screen.getByText('여기에 놓아 추가')).toBeInTheDocument();
+    fireEvent.dragLeave(dropZone);
+    expect(screen.queryByText('여기에 놓아 추가')).not.toBeInTheDocument();
   });
 });
