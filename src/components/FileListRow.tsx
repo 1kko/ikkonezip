@@ -3,6 +3,10 @@ import type { ProcessedFile } from '@/hooks/useFileProcessor';
 import { FileListRowFilename } from './FileListRowFilename';
 import { FileListRowMeta } from './FileListRowMeta';
 import { formatFileSize } from '@/utils/formatFileSize';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { DragHandle } from './DragHandle';
+import type React from 'react';
 
 interface FileListRowProps {
   file: ProcessedFile;
@@ -12,12 +16,34 @@ interface FileListRowProps {
 }
 
 export function FileListRow({ file, selected, onToggleSelect, onRename }: FileListRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: file.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+  };
+
   return (
     <div
+      ref={setNodeRef}
+      style={style}
       className="group flex items-center gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
       title={file.path}
       onClick={() => onToggleSelect(file.id)}
     >
+      <DragHandle
+        {...attributes}
+        {...listeners}
+        onClick={(e) => e.stopPropagation()}
+      />
       <input
         type="checkbox"
         checked={selected}

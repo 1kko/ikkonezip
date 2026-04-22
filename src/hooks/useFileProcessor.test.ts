@@ -825,4 +825,51 @@ describe('useFileProcessor', () => {
       vi.mocked(zipFiles.createZip).mockImplementation(origCreateZip);
     });
   });
+
+  describe('reorderFiles', () => {
+    it('moves a file from one position to another', async () => {
+      const { result } = renderHook(() => useFileProcessor());
+      const a = new File(['a'], 'a.txt');
+      const b = new File(['b'], 'b.txt');
+      const c = new File(['c'], 'c.txt');
+      await act(async () => {
+        await result.current.addFiles([a, b, c]);
+      });
+      const ids = result.current.files.map((f) => f.id);
+
+      // Move A (index 0) to where C is (index 2)
+      act(() => {
+        result.current.reorderFiles(ids[0], ids[2]);
+      });
+
+      const after = result.current.files.map((f) => f.originalName);
+      expect(after).toEqual(['b.txt', 'c.txt', 'a.txt']);
+    });
+
+    it('is a no-op when from === to', async () => {
+      const { result } = renderHook(() => useFileProcessor());
+      const a = new File(['a'], 'a.txt');
+      const b = new File(['b'], 'b.txt');
+      await act(async () => {
+        await result.current.addFiles([a, b]);
+      });
+      const ids = result.current.files.map((f) => f.id);
+      act(() => {
+        result.current.reorderFiles(ids[0], ids[0]);
+      });
+      expect(result.current.files.map((f) => f.originalName)).toEqual(['a.txt', 'b.txt']);
+    });
+
+    it('is a no-op when either id is unknown', async () => {
+      const { result } = renderHook(() => useFileProcessor());
+      const a = new File(['a'], 'a.txt');
+      await act(async () => {
+        await result.current.addFiles([a]);
+      });
+      act(() => {
+        result.current.reorderFiles('does-not-exist', result.current.files[0].id);
+      });
+      expect(result.current.files).toHaveLength(1);
+    });
+  });
 });
