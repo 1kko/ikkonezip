@@ -60,6 +60,27 @@ jobs:
           echo "path=$DMG" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "$DMG")" >> "$GITHUB_OUTPUT"
 
+      - name: Inject 실행방법.txt into DMG
+        run: |
+          set -e
+          DMG="${{ steps.dmg.outputs.path }}"
+          RW_DMG="${DMG%.dmg}-rw.dmg"
+          MOUNT="/tmp/dmg-mount-$$"
+          # Convert read-only DMG to read-write so we can add files
+          hdiutil convert "$DMG" -format UDRW -o "$RW_DMG"
+          # Mount it
+          mkdir -p "$MOUNT"
+          hdiutil attach -nobrowse -mountpoint "$MOUNT" "$RW_DMG"
+          # Copy in the install instructions; this puts the .txt next to the
+          # .app icon when the user mounts the DMG in Finder.
+          cp app/dmg-resources/실행방법.txt "$MOUNT/실행방법.txt"
+          # Detach
+          hdiutil detach "$MOUNT"
+          # Convert back to compressed read-only, replacing the original
+          rm -f "$DMG"
+          hdiutil convert "$RW_DMG" -format UDZO -o "$DMG"
+          rm -f "$RW_DMG"
+
       - name: Extract version from tag
         id: version
         run: |
