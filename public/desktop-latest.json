@@ -1,6 +1,6 @@
 {
-  "version": "0.0.0",
-  "downloadUrl": "https://github.com/1kko/ikkonezip/releases",
-  "notes": "데스크톱 앱 첫 릴리스 준비 중",
+  "version": "0.1.0",
+  "downloadUrl": "https://github.com/1kko/ikkonezip/releases/download/v0.1.0-desktop/Zip_0.1.0_universal.dmg",
+  "notes": "이코네Zip 데스크톱 앱 첫 릴리스. 한글 파일명 정규화 + ZIP 압축 + 파일 연결.",
   "releasedAt": "2026-04-22"
 }

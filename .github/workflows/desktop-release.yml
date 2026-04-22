@@ -95,8 +95,16 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout main
-          git pull origin main
+          # actions/checkout left us in detached-HEAD on the tag SHA — create
+          # a local main tracking the remote so we can commit + push.
+          git fetch origin main
+          MANIFEST=$(cat public/desktop-latest.json)
+          git checkout -B main origin/main
+          printf '%s' "$MANIFEST" > public/desktop-latest.json
           git add public/desktop-latest.json
-          git commit -m "Update desktop-latest.json for ${{ steps.version.outputs.tag }}"
-          git push origin main
+          # Retry-on-race in case another commit landed during the build.
+          for attempt in 1 2 3; do
+            git commit -m "Update desktop-latest.json for ${{ steps.version.outputs.tag }}" || true
+            if git push origin main; then break; fi
+            git pull --rebase origin main || true
+          done
