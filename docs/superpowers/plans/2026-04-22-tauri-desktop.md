@@ -131,7 +131,8 @@ This creates `app/src-tauri/` with `Cargo.toml`, `build.rs`, `src/main.rs`, `tau
         "resizable": true,
         "fullscreen": false,
         "decorations": true,
-        "transparent": false
+        "transparent": false,
+        "dragDropEnabled": false
       }
     ],
     "security": {
@@ -167,6 +168,8 @@ This creates `app/src-tauri/` with `Cargo.toml`, `build.rs`, `src/main.rs`, `tau
 ```
 
 `connect-src` lists exactly two endpoints: our origin (for `desktop-latest.json`) and api.github.com (allowed for future-proofing in case we ever want a fallback to releases API; not used in v0.1).
+
+**Critical: `"dragDropEnabled": false`** on the window. By default, Tauri 2's WebView intercepts native file-drop events at the window level and never forwards them to HTML5 drag/drop handlers. Without disabling it, the entire add-files UX (existing FileUploader dropzone + new FileList drop target) is silently broken inside the desktop app. Setting this to false delegates drop handling to the WebView's normal HTML5 events, matching web behavior exactly.
 
 - [ ] **Step 5: Verify `cargo tauri dev` builds and opens a window**
 
