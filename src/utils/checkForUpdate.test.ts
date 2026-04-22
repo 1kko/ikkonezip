@@ -58,4 +58,11 @@ describe('checkForUpdate', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('not-json'));
     expect(await checkForUpdate('1.0.0')).toBeNull();
   });
+
+  it('returns null when manifest has no version field', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ downloadUrl: 'https://example.com/dmg' }))
+    );
+    expect(await checkForUpdate('1.0.0')).toBeNull();
+  });
 });
