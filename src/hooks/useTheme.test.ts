@@ -238,5 +238,26 @@ describe('useTheme', () => {
         expect(tauriWindowMock.unlistenMock).toHaveBeenCalled();
       });
     });
+
+    it('immediately unsubscribes if unmount happens before onThemeChanged resolves', async () => {
+      // Make onThemeChanged hang until we manually resolve it.
+      let resolveSubscribe: ((u: () => void) => void) | undefined;
+      tauriWindowMock.onThemeChangedMock.mockReset().mockImplementation(
+        () => new Promise<() => void>((resolve) => { resolveSubscribe = resolve; })
+      );
+
+      const { unmount } = renderHook(() => useTheme());
+      // Wait until the dynamic import is requested
+      await waitFor(() => {
+        expect(tauriWindowMock.onThemeChangedMock).toHaveBeenCalled();
+      });
+      // Unmount BEFORE the subscribe promise resolves
+      unmount();
+      // Now resolve — the hook should immediately invoke the unlisten because mounted=false
+      resolveSubscribe!(tauriWindowMock.unlistenMock);
+      await waitFor(() => {
+        expect(tauriWindowMock.unlistenMock).toHaveBeenCalled();
+      });
+    });
   });
 });
