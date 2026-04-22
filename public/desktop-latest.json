@@ -1,6 +1,6 @@
 {
   "version": "0.1.1",
-  "downloadUrl": "https://github.com/1kko/ikkonezip/releases/download/v0.1.1-desktop/Zip_0.1.1_universal.dmg",
+  "downloadUrl": "https://zip.1kko.com/desktop/Zip_0.1.1_universal.dmg",
   "notes": "DMG에 실행방법.txt 포함, Tauri 다크모드 시스템 추적, 검색바 여백/스크롤바 가시성 개선, 창 크기 680x900",
   "releasedAt": "2026-04-22"
 }
