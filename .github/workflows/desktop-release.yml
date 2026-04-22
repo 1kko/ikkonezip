@@ -1,0 +1,102 @@
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - 'v*-desktop'
+
+jobs:
+  build:
+    name: Build universal DMG
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Cargo registry + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            app/src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('app/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install web deps and build SPA
+        run: |
+          npm ci
+          npm run build
+
+      - name: Install Tauri CLI
+        run: |
+          cd app
+          npm ci
+
+      - name: Install create-dmg
+        run: brew install create-dmg
+
+      - name: Build universal DMG
+        run: |
+          cd app
+          npx tauri build --target universal-apple-darwin
+
+      - name: Locate DMG
+        id: dmg
+        run: |
+          DMG=$(find app/src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" | head -1)
+          echo "path=$DMG" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$DMG")" >> "$GITHUB_OUTPUT"
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF##*/}"
+          VERSION="${TAG%-desktop}"
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release with DMG
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Desktop ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: ${{ steps.dmg.outputs.path }}
+
+      - name: Update desktop-latest.json
+        run: |
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/${{ steps.dmg.outputs.name }}"
+          NOTES=$(gh release view "${{ steps.version.outputs.tag }}" --json body --jq '.body // "" | .[0:280]')
+          jq -n \
+            --arg version "${{ steps.version.outputs.version }}" \
+            --arg url "$DOWNLOAD_URL" \
+            --arg notes "$NOTES" \
+            --arg releasedAt "$(date -u +%Y-%m-%d)" \
+            '{version: $version, downloadUrl: $url, notes: $notes, releasedAt: $releasedAt}' \
+            > public/desktop-latest.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Commit and push desktop-latest.json to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout main
+          git pull origin main
+          git add public/desktop-latest.json
+          git commit -m "Update desktop-latest.json for ${{ steps.version.outputs.tag }}"
+          git push origin main

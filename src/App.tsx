@@ -172,6 +172,14 @@ function App() {
           <p className="mt-4 text-xs text-muted-foreground">
             모든 처리는 브라우저에서 이루어지며, 파일이 서버로 업로드되지 않습니다.
           </p>
+          <p className="mt-3">
+            <a
+              href="/desktop-install.html"
+              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            >
+              데스크톱 앱 다운로드
+            </a>
+          </p>
           <Footer />
         </footer>
       </div>
