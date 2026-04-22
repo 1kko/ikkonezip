@@ -33,12 +33,26 @@
 <a class="download-button" href="https://github.com/1kko/ikkonezip/releases/latest" id="dl-link">
   최신 버전 다운로드 (DMG)
 </a>
+<script>
+  // Read the manifest and rewrite the download button to point at our
+  // self-hosted DMG. Falls back to the hardcoded GitHub Releases URL
+  // (default href above) if the manifest is unreachable.
+  fetch('/desktop-latest.json', { cache: 'no-cache' })
+    .then(r => r.ok ? r.json() : null)
+    .then(m => {
+      if (!m || !m.downloadUrl || m.version === '0.0.0') return;
+      const a = document.getElementById('dl-link');
+      a.href = m.downloadUrl;
+      a.textContent = '최신 버전 다운로드 (v' + m.version + ', DMG)';
+    })
+    .catch(() => {});
+</script>
 
 <h2>설치 방법</h2>
 
 <div class="step">
   <span class="step-num">1</span><strong>DMG 파일 다운로드</strong>
-  <p>위의 다운로드 버튼을 누르고 GitHub Releases 페이지에서 <code>.dmg</code> 파일을 받으세요.</p>
+  <p>위의 버튼을 눌러 DMG 파일을 받으세요.</p>
 </div>
 
 <div class="step">
