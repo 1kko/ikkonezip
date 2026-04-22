@@ -1,6 +1,6 @@
 {
-  "version": "0.1.0",
-  "downloadUrl": "https://github.com/1kko/ikkonezip/releases/download/v0.1.0-desktop/Zip_0.1.0_universal.dmg",
-  "notes": "이코네Zip 데스크톱 앱 첫 릴리스. 한글 파일명 정규화 + ZIP 압축 + 파일 연결.",
+  "version": "0.1.1",
+  "downloadUrl": "https://github.com/1kko/ikkonezip/releases/download/v0.1.1-desktop/이코네Zip_0.1.1_universal.dmg",
+  "notes": "## What's Changed\n* Add 실행방법.txt to DMG; fix dark-mode in Tauri WebView by @1kko in https://github.com/1kko/ikkonezip/pull/58\n\n\n**Full Changelog**: https://github.com/1kko/ikkonezip/compare/v0.1.0-desktop...v0.1.1-desktop",
   "releasedAt": "2026-04-22"
 }
