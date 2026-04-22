@@ -87,7 +87,9 @@ function App() {
 
         <main className="space-y-6">
           {/* Upload section */}
-          <FileUploader onFilesSelected={addFiles} hideExample={files.length > 0} />
+          {files.length === 0 && (
+            <FileUploader onFilesSelected={addFiles} />
+          )}
 
           {/* ZIP password prompt */}
           {needsPassword && (
@@ -119,6 +121,7 @@ function App() {
             onRemoveFiles={removeFiles}
             onRename={renameFile}
             onReorder={reorderFiles}
+            onAddFiles={addFiles}
           />
 
           {/* Download section */}
