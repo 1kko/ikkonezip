@@ -100,7 +100,11 @@ jobs:
 
       - name: Update desktop-latest.json
         run: |
-          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/${{ steps.dmg.outputs.name }}"
+          # Query the ACTUAL uploaded asset name — GitHub strips non-ASCII chars
+          # at upload time, so the local DMG filename (e.g. "이코네Zip_*.dmg")
+          # differs from the public asset name (e.g. "Zip_*.dmg").
+          ASSET_NAME=$(gh release view "${{ steps.version.outputs.tag }}" --json assets --jq '.assets[0].name')
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/$ASSET_NAME"
           NOTES=$(gh release view "${{ steps.version.outputs.tag }}" --json body --jq '.body // "" | .[0:280]')
           jq -n \
             --arg version "${{ steps.version.outputs.version }}" \
