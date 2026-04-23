@@ -160,6 +160,35 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
     setWidths((w) => (w[ctx.key] === next ? w : { ...w, [ctx.key]: next }));
   }, []);
 
+  // When the container narrows (viewport resize, full-width toggle off), the
+  // previously-set name/size widths can now overflow. Shrink them
+  // proportionally down to their minimums so the grid fits.
+  useEffect(() => {
+    const el = tableRef.current;
+    if (!el) return;
+
+    const clamp = (containerWidth: number) => {
+      if (containerWidth <= 0) return;
+      const available = containerWidth - 20 - GRID_GAP_TOTAL - MIN_PATH_WIDTH;
+      setWidths((w) => {
+        const total = w.name + w.size;
+        if (total <= available) return w;
+        const scale = available / total;
+        const nextName = Math.max(MIN_WIDTHS.name, Math.floor(w.name * scale));
+        const nextSize = Math.max(MIN_WIDTHS.size, Math.floor(w.size * scale));
+        if (nextName === w.name && nextSize === w.size) return w;
+        return { name: nextName, size: nextSize };
+      });
+    };
+
+    clamp(el.clientWidth);
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) clamp(entry.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const endResize = useCallback((e: PointerEvent<HTMLDivElement>) => {
     const target = e.currentTarget as HTMLDivElement;
     if (target.hasPointerCapture(e.pointerId)) target.releasePointerCapture(e.pointerId);
@@ -205,14 +234,6 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
       e.target.value = '';
     }
   }, [onAddFiles]);
-
-  // While a resize is in progress, suppress text selection on the whole document.
-  useEffect(() => {
-    const before = document.body.style.userSelect;
-    return () => {
-      document.body.style.userSelect = before;
-    };
-  }, []);
 
   if (files.length === 0) {
     return null;
