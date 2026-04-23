@@ -119,6 +119,8 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
   }, [selectedIds, onRemoveFiles]);
 
   const tableRef = useRef<HTMLDivElement>(null);
+  /** Content-box width of the grid row, kept fresh by the ResizeObserver. */
+  const contentWidthRef = useRef<number>(0);
   const resizingRef = useRef<{
     key: keyof ColumnWidths;
     startX: number;
@@ -139,7 +141,7 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
       startX: e.clientX,
       startWidth: widths[key],
       otherWidth: widths[otherKey],
-      containerWidth: tableRef.current?.clientWidth ?? 0,
+      containerWidth: contentWidthRef.current,
     };
   }, [widths]);
 
@@ -161,8 +163,9 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
   }, []);
 
   // When the container narrows (viewport resize, full-width toggle off), the
-  // previously-set name/size widths can now overflow. Shrink them
-  // proportionally down to their minimums so the grid fits.
+  // previously-set name/size widths can now overflow. Shrink them to fit —
+  // scale proportionally first, then redistribute if either column would fall
+  // below its minimum.
   useEffect(() => {
     const el = tableRef.current;
     if (!el) return;
@@ -173,17 +176,38 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
       setWidths((w) => {
         const total = w.name + w.size;
         if (total <= available) return w;
+
         const scale = available / total;
-        const nextName = Math.max(MIN_WIDTHS.name, Math.floor(w.name * scale));
-        const nextSize = Math.max(MIN_WIDTHS.size, Math.floor(w.size * scale));
+        let nextName = Math.floor(w.name * scale);
+        let nextSize = Math.floor(w.size * scale);
+
+        // Proportional scaling can push one column below its minimum while
+        // the other still has slack. Pin the column that hit min and give
+        // the remainder to the other (down to its own min).
+        if (nextSize < MIN_WIDTHS.size) {
+          nextSize = MIN_WIDTHS.size;
+          nextName = available - nextSize;
+        } else if (nextName < MIN_WIDTHS.name) {
+          nextName = MIN_WIDTHS.name;
+          nextSize = available - nextName;
+        }
+
+        nextName = Math.max(MIN_WIDTHS.name, nextName);
+        nextSize = Math.max(MIN_WIDTHS.size, nextSize);
+
         if (nextName === w.name && nextSize === w.size) return w;
         return { name: nextName, size: nextSize };
       });
     };
 
-    clamp(el.clientWidth);
+    // ResizeObserver fires an initial callback on observe(), so we skip a
+    // manual read. contentRect is the element's content box (excludes the
+    // row's px-3 padding), matching what the grid columns actually get.
     const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) clamp(entry.contentRect.width);
+      for (const entry of entries) {
+        contentWidthRef.current = entry.contentRect.width;
+        clamp(entry.contentRect.width);
+      }
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -313,7 +337,7 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
           </div>
         </div>
       </CardHeader>
-      <CardContent ref={tableRef} className="pt-0 overflow-x-hidden">
+      <CardContent className="pt-0 overflow-x-hidden">
         {showSearch && (
           <div className="flex items-center justify-end gap-3 px-4 py-3">
             {normalizedQuery.length > 0 && (
@@ -326,6 +350,7 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
         )}
         {/* Header row + resize handles */}
         <div
+          ref={tableRef}
           role="row"
           style={{ gridTemplateColumns }}
           className="grid items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground select-none"
@@ -364,7 +389,7 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
             isLast
           />
         </div>
-        <ScrollArea className="max-h-72 custom-scrollbar pr-3">
+        <ScrollArea className="max-h-72 overflow-y-auto overflow-x-hidden custom-scrollbar pr-3">
           <div className="space-y-2">
             {visibleFiles.map((file) => (
               <FileListRow
