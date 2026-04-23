@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect, type DragEvent, type PointerEvent } from 'react';
-import { FileText, Trash2, AlertTriangle, Plus, ChevronUp, ChevronDown, ChevronsUpDown, RotateCcw } from 'lucide-react';
+import { FileText, Trash2, AlertTriangle, Plus, ChevronUp, ChevronDown, ChevronsUpDown, File } from 'lucide-react';
 import type { ProcessedFile } from '@/hooks/useFileProcessor';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -305,7 +305,7 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles, onClearFi
                 onClick={onClearFiles}
                 className="gap-1.5"
               >
-                <RotateCcw className="w-4 h-4" />
+                <File className="w-4 h-4" />
                 새로 압축
               </Button>
             )}
