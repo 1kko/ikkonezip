@@ -168,7 +168,7 @@ describe('FileList — search/filter at ≥50 files', () => {
   });
 });
 
-describe('FileList — folder tree mode', () => {
+describe('FileList — two-pane folder mode', () => {
   function folderFile(id: string, path: string): ProcessedFile {
     const name = path.split('/').pop()!;
     return {
@@ -183,15 +183,14 @@ describe('FileList — folder tree mode', () => {
     };
   }
 
-  it('renders folder rows with file counts when files contain slashes', () => {
-    const files = [
-      folderFile('1', 'root/a.txt'),
-      folderFile('2', 'root/b.txt'),
-      folderFile('3', 'other.txt'),
-    ];
+  it('shows the folder sidebar when files live inside a folder', () => {
     render(
       <FileList
-        files={files}
+        files={[
+          folderFile('1', 'root/a.txt'),
+          folderFile('2', 'root/b.txt'),
+          folderFile('3', 'loose.txt'),
+        ]}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
         onReorder={vi.fn()}
@@ -199,18 +198,57 @@ describe('FileList — folder tree mode', () => {
         onRemoveFolder={vi.fn()}
       />
     );
-    expect(screen.getByText('root')).toBeInTheDocument();
-    // Folder badge shows 2개
-    expect(screen.getByText('2개')).toBeInTheDocument();
-    // Root-level loose file still rendered
-    expect(screen.getByText('other.txt')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: '폴더 구조' })).toBeInTheDocument();
+    // Root entry appears in both the sidebar and the breadcrumb.
+    expect(screen.getAllByText('루트').length).toBeGreaterThanOrEqual(1);
+    // "root" appears in both the sidebar and the right-pane subfolder row.
+    expect(screen.getAllByText('root').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('calls onRemoveFolder when the folder delete button is clicked', () => {
-    const onRemoveFolder = vi.fn();
+  it('defaults to the root view showing subfolder rows and loose files', () => {
+    render(
+      <FileList
+        files={[folderFile('1', 'root/a.txt'), folderFile('2', 'loose.txt')]}
+        onRemoveFiles={vi.fn()}
+        onRename={vi.fn()}
+        onReorder={vi.fn()}
+        onRenameFolder={vi.fn()}
+        onRemoveFolder={vi.fn()}
+      />
+    );
+    // Loose file is visible at the root level.
+    expect(screen.getByText('loose.txt')).toBeInTheDocument();
+    // "root" subfolder row exists; "a.txt" inside it is not drilled-in yet.
+    expect(screen.queryByText('a.txt')).not.toBeInTheDocument();
+  });
+
+  it('drills into a subfolder when its row is clicked and shows its files', () => {
     render(
       <FileList
         files={[folderFile('1', 'root/a.txt'), folderFile('2', 'root/b.txt')]}
+        onRemoveFiles={vi.fn()}
+        onRename={vi.fn()}
+        onReorder={vi.fn()}
+        onRenameFolder={vi.fn()}
+        onRemoveFolder={vi.fn()}
+      />
+    );
+    // Find the "root" subfolder row (button). The sidebar also has a "root"
+    // button; we want the one in the right pane, which has a title attribute.
+    const rightPaneRootRows = screen
+      .getAllByRole('button')
+      .filter((b) => b.getAttribute('title') === 'root' && b.textContent?.includes('root'));
+    expect(rightPaneRootRows.length).toBeGreaterThan(0);
+    fireEvent.click(rightPaneRootRows[0]);
+    expect(screen.getByText('a.txt')).toBeInTheDocument();
+    expect(screen.getByText('b.txt')).toBeInTheDocument();
+  });
+
+  it('calls onRemoveFolder when the breadcrumb delete button is used', () => {
+    const onRemoveFolder = vi.fn();
+    render(
+      <FileList
+        files={[folderFile('1', 'root/a.txt')]}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
         onReorder={vi.fn()}
@@ -218,31 +256,16 @@ describe('FileList — folder tree mode', () => {
         onRemoveFolder={onRemoveFolder}
       />
     );
-    fireEvent.click(screen.getByRole('button', { name: 'root 폴더 삭제' }));
+    // Drill into "root" via the sidebar to surface the breadcrumb delete.
+    fireEvent.click(screen.getByRole('button', { name: /^root$/ }));
+    fireEvent.click(screen.getByRole('button', { name: '폴더 삭제' }));
     expect(onRemoveFolder).toHaveBeenCalledWith('root');
   });
 
-  it('folder checkbox selects every descendant', () => {
-    const onRemoveFiles = vi.fn();
+  it('sidebar click navigates and updates the breadcrumb', () => {
     render(
       <FileList
-        files={[folderFile('1', 'root/a.txt'), folderFile('2', 'root/b.txt')]}
-        onRemoveFiles={onRemoveFiles}
-        onRename={vi.fn()}
-        onReorder={vi.fn()}
-        onRenameFolder={vi.fn()}
-        onRemoveFolder={vi.fn()}
-      />
-    );
-    fireEvent.click(screen.getByRole('checkbox', { name: 'root 전체 선택' }));
-    fireEvent.click(screen.getByRole('button', { name: /선택 삭제/ }));
-    expect(onRemoveFiles).toHaveBeenCalledWith(expect.arrayContaining(['1', '2']));
-  });
-
-  it('collapses a folder and hides its descendant file rows', () => {
-    render(
-      <FileList
-        files={[folderFile('1', 'root/a.txt'), folderFile('2', 'root/b.txt')]}
+        files={[folderFile('1', 'root/sub/a.txt')]}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
         onReorder={vi.fn()}
@@ -250,9 +273,9 @@ describe('FileList — folder tree mode', () => {
         onRemoveFolder={vi.fn()}
       />
     );
-    expect(screen.getByText('a.txt')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '폴더 접기' }));
-    expect(screen.queryByText('a.txt')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^root$/ }));
+    // Breadcrumb (not sidebar) now has "루트 > root".
+    expect(screen.getAllByText('root').length).toBeGreaterThanOrEqual(2);
   });
 });
 

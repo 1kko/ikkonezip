@@ -54,6 +54,29 @@ export function collectDescendantFiles(node: TreeNode | TreeNode[]): ProcessedFi
   return out;
 }
 
+/**
+ * Walk the tree to find a folder node at the given full path
+ * (e.g. "root/sub"). Returns null if no folder matches.
+ */
+export function findFolderNode(
+  tree: TreeNode[],
+  path: string,
+): Extract<TreeNode, { kind: 'folder' }> | null {
+  if (!path) return null;
+  const segments = path.split('/').filter(Boolean);
+  let list: TreeNode[] = tree;
+  let found: Extract<TreeNode, { kind: 'folder' }> | null = null;
+  for (const seg of segments) {
+    const next = list.find((n): n is Extract<TreeNode, { kind: 'folder' }> =>
+      n.kind === 'folder' && n.name === seg,
+    );
+    if (!next) return null;
+    found = next;
+    list = next.children;
+  }
+  return found;
+}
+
 /** Every folder path inside the tree (used for default-expanded state). */
 export function collectFolderPaths(nodes: TreeNode[]): string[] {
   const paths: string[] = [];

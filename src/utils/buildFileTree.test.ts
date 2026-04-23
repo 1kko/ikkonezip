@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildFileTree, collectDescendantFiles, collectFolderPaths, type TreeNode } from './buildFileTree';
+import { buildFileTree, collectDescendantFiles, collectFolderPaths, findFolderNode, type TreeNode } from './buildFileTree';
 import type { ProcessedFile } from '@/hooks/useFileProcessor';
 
 function makeFile(id: string, normalizedPath: string, normalizedName?: string): ProcessedFile {
@@ -95,6 +95,37 @@ describe('collectDescendantFiles', () => {
   it('returns the single file for a file node', () => {
     const node: TreeNode = { kind: 'file', id: 'x', file: makeFile('x', 'x.txt') };
     expect(collectDescendantFiles(node)).toHaveLength(1);
+  });
+});
+
+describe('findFolderNode', () => {
+  it('returns the folder at a top-level path', () => {
+    const tree = buildFileTree([makeFile('a', 'root/a.txt')]);
+    const folder = findFolderNode(tree, 'root');
+    expect(folder?.name).toBe('root');
+    expect(folder?.path).toBe('root');
+  });
+
+  it('returns the folder at a nested path', () => {
+    const tree = buildFileTree([makeFile('a', 'root/sub/a.txt')]);
+    const folder = findFolderNode(tree, 'root/sub');
+    expect(folder?.name).toBe('sub');
+    expect(folder?.path).toBe('root/sub');
+  });
+
+  it('returns null for an unknown path', () => {
+    const tree = buildFileTree([makeFile('a', 'root/a.txt')]);
+    expect(findFolderNode(tree, 'missing')).toBeNull();
+  });
+
+  it('returns null for an empty path', () => {
+    const tree = buildFileTree([makeFile('a', 'root/a.txt')]);
+    expect(findFolderNode(tree, '')).toBeNull();
+  });
+
+  it('returns null when the path leads to a file, not a folder', () => {
+    const tree = buildFileTree([makeFile('a', 'root/a.txt')]);
+    expect(findFolderNode(tree, 'root/a.txt')).toBeNull();
   });
 });
 

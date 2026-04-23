@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileListRow } from './FileListRow';
 import { FileListSearch } from './FileListSearch';
-import { FileTreeNode } from './FileTreeNode';
-import { buildFileTree } from '@/utils/buildFileTree';
+import { FolderSidebar } from './FolderSidebar';
+import { FolderContents } from './FolderContents';
+import { buildFileTree, findFolderNode } from '@/utils/buildFileTree';
 import { formatFileSize } from '@/utils/formatFileSize';
 import { cn } from '@/lib/utils';
 import { extractFilesFromDataTransfer } from '@/utils/extractFilesFromDataTransfer';
@@ -40,21 +41,31 @@ interface FileListProps {
   onAddFiles?: (files: FileList | File[]) => void;
 }
 
-export function FileList({ files, onRemoveFiles, onRename, onReorder, onRenameFolder, onRemoveFolder, onAddFiles }: FileListProps) {
+export function FileList({
+  files,
+  onRemoveFiles,
+  onRename,
+  onReorder,
+  onRenameFolder,
+  onRemoveFolder,
+  onAddFiles,
+}: FileListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
 
   const showSearch = files.length >= 50;
   const normalizedQuery = useMemo(
     () => searchQuery.trim().toLowerCase(),
     [searchQuery]
   );
+  const searchActive = normalizedQuery.length > 0;
   const visibleFiles = useMemo(() => {
-    if (normalizedQuery.length === 0) return files;
+    if (!searchActive) return files;
     return files.filter((f) =>
       f.normalizedName.toLowerCase().includes(normalizedQuery)
     );
-  }, [files, normalizedQuery]);
+  }, [files, normalizedQuery, searchActive]);
   const visibleFileIds = useMemo(() => new Set(visibleFiles.map((f) => f.id)), [visibleFiles]);
 
   const hasFolders = useMemo(
@@ -63,9 +74,8 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder, onRenameFo
   );
   const tree = useMemo(() => buildFileTree(files), [files]);
 
-  // Folders are expanded by default; only explicitly collapsed folders are
-  // tracked. New folders that appear after a rename or upload are expanded
-  // automatically because their paths aren't in this set.
+  // Sidebar expand/collapse: folders are expanded by default; only explicitly
+  // collapsed folders are tracked. New folders appear expanded.
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const toggleExpand = useCallback((path: string) => {
     setCollapsedFolders((prev) => {
@@ -76,20 +86,11 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder, onRenameFo
     });
   }, []);
 
-  // During search, force every folder that contains a match to be open.
-  const forceExpand = useMemo(() => {
-    if (normalizedQuery.length === 0) return null;
-    const paths = new Set<string>();
-    for (const f of visibleFiles) {
-      const parts = f.normalizedPath.split('/');
-      let acc = '';
-      for (let i = 0; i < parts.length - 1; i++) {
-        acc = acc ? `${acc}/${parts[i]}` : parts[i];
-        paths.add(acc);
-      }
-    }
-    return paths;
-  }, [normalizedQuery, visibleFiles]);
+  const directChildren = useMemo(() => {
+    if (selectedPath === null) return tree;
+    const folder = findFolderNode(tree, selectedPath);
+    return folder?.children ?? [];
+  }, [tree, selectedPath]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -98,17 +99,6 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder, onRenameFo
         next.delete(id);
       } else {
         next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const toggleSelectMany = useCallback((ids: string[], select: boolean) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      for (const id of ids) {
-        if (select) next.add(id);
-        else next.delete(id);
       }
       return next;
     });
@@ -134,26 +124,51 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder, onRenameFo
     setSelectedIds(new Set());
   }, [selectedIds, onRemoveFiles]);
 
-  const sensors = useSensors(
+  // Folder rename: propagate the path change into selectedPath so the right
+  // pane keeps showing the same folder under its new name.
+  const handleRenameFolder = useCallback(
+    (path: string, newName: string) => {
+      onRenameFolder?.(path, newName);
+      // eslint-disable-next-line no-control-regex
+      const sanitized = newName.replace(/[/\\\x00]/g, '').trim();
+      if (!sanitized) return;
+      const lastSlash = path.lastIndexOf('/');
+      const parentPrefix = lastSlash >= 0 ? path.slice(0, lastSlash + 1) : '';
+      const newPath = parentPrefix + sanitized;
+      if (newPath === path) return;
+      setSelectedPath((prev) => {
+        if (prev === null) return prev;
+        if (prev === path) return newPath;
+        if (prev.startsWith(path + '/')) return newPath + prev.slice(path.length);
+        return prev;
+      });
+    },
+    [onRenameFolder],
+  );
+
+  // Folder delete: if the currently-viewed folder is gone, jump to root.
+  const handleRemoveFolder = useCallback(
+    (path: string) => {
+      onRemoveFolder?.(path);
+      setSelectedPath((prev) => {
+        if (prev === null) return prev;
+        if (prev === path || prev.startsWith(path + '/')) return null;
+        return prev;
+      });
+    },
+    [onRemoveFolder],
+  );
+
+  // Flat-mode DnD wiring (stays identical to previous behavior).
+  const flatSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
+  const handleFlatDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    if (hasFolders) {
-      // In tree mode, only reorder within the same parent folder. Cross-folder
-      // drag is out of scope for this iteration.
-      const fromPath = files.find((f) => f.id === active.id)?.normalizedPath;
-      const toPath = files.find((f) => f.id === over.id)?.normalizedPath;
-      if (!fromPath || !toPath) return;
-      const fromParent = fromPath.slice(0, fromPath.lastIndexOf('/'));
-      const toParent = toPath.slice(0, toPath.lastIndexOf('/'));
-      if (fromParent !== toParent) return;
-    }
     onReorder(String(active.id), String(over.id));
-  }, [onReorder, hasFolders, files]);
+  }, [onReorder]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -275,56 +290,62 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder, onRenameFo
         {showSearch && (
           <div className="flex items-center justify-between gap-3 px-4 py-3">
             <FileListSearch value={searchQuery} onChange={setSearchQuery} />
-            {normalizedQuery.length > 0 && (
+            {searchActive && (
               <Badge variant="secondary">
                 검색 활성: {visibleFiles.length}개 표시
               </Badge>
             )}
           </div>
         )}
-        <ScrollArea className="max-h-72 custom-scrollbar pr-3">
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-              <input
-                type="checkbox"
-                aria-label="전체 선택"
-                checked={allVisibleSelected}
-                onChange={toggleSelectAll}
-                className="w-3.5 h-3.5 rounded border-input accent-primary cursor-pointer"
+        <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
+          <input
+            type="checkbox"
+            aria-label="전체 선택"
+            checked={allVisibleSelected}
+            onChange={toggleSelectAll}
+            className="w-3.5 h-3.5 rounded border-input accent-primary cursor-pointer"
+          />
+          전체 선택
+        </label>
+        {hasFolders ? (
+          <div className="flex flex-col md:flex-row gap-4 pt-2">
+            <aside className="md:w-64 md:flex-shrink-0 md:border-r md:pr-4">
+              <ScrollArea className="max-h-72 md:max-h-96 custom-scrollbar pr-2">
+                <FolderSidebar
+                  tree={tree}
+                  selectedPath={selectedPath}
+                  collapsed={collapsedFolders}
+                  onSelect={setSelectedPath}
+                  onToggleCollapse={toggleExpand}
+                  onRenameFolder={handleRenameFolder}
+                  onRemoveFolder={handleRemoveFolder}
+                />
+              </ScrollArea>
+            </aside>
+            <ScrollArea className="flex-1 min-w-0 max-h-72 md:max-h-96 custom-scrollbar pr-3">
+              <FolderContents
+                selectedPath={selectedPath}
+                directChildren={directChildren}
+                searchActive={searchActive}
+                searchResults={visibleFiles}
+                selectedIds={selectedIds}
+                visibleFileIds={visibleFileIds}
+                onNavigate={setSelectedPath}
+                onToggleSelect={toggleSelect}
+                onRenameFile={onRename}
+                onReorder={onReorder}
+                onRemoveFolder={handleRemoveFolder}
               />
-              전체 선택
-            </label>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              {hasFolders ? (
-                <SortableContext
-                  items={tree.filter((n) => n.kind === 'file').map((n) => (n.kind === 'file' ? n.id : ''))}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-1">
-                    {tree.map((node) => (
-                      <FileTreeNode
-                        key={node.kind === 'folder' ? `folder:${node.path}` : `file:${node.id}`}
-                        node={node}
-                        depth={0}
-                        collapsed={collapsedFolders}
-                        forceExpand={forceExpand}
-                        selectedIds={selectedIds}
-                        visibleFileIds={visibleFileIds}
-                        onToggleExpand={toggleExpand}
-                        onToggleSelect={toggleSelect}
-                        onToggleSelectMany={toggleSelectMany}
-                        onRenameFile={onRename}
-                        onRenameFolder={onRenameFolder ?? (() => {})}
-                        onRemoveFolder={onRemoveFolder ?? (() => {})}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              ) : (
+            </ScrollArea>
+          </div>
+        ) : (
+          <ScrollArea className="max-h-72 custom-scrollbar pr-3">
+            <div className="space-y-2">
+              <DndContext
+                sensors={flatSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleFlatDragEnd}
+              >
                 <SortableContext
                   items={visibleFiles.map((f) => f.id)}
                   strategy={verticalListSortingStrategy}
@@ -339,10 +360,10 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder, onRenameFo
                     />
                   ))}
                 </SortableContext>
-              )}
-            </DndContext>
-          </div>
-        </ScrollArea>
+              </DndContext>
+            </div>
+          </ScrollArea>
+        )}
       </CardContent>
     </Card>
   );

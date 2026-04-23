@@ -141,7 +141,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
-      <div className="container mx-auto px-4 py-12 max-w-2xl">
+      <div className="container mx-auto px-4 py-12 max-w-5xl">
         {!isTauri() && <Header />}
 
         <main className="space-y-6">
