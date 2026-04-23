@@ -897,6 +897,34 @@ describe('useFileProcessor', () => {
       expect(result.current.files[0].normalizedPath).toBe('root/a.txt');
     });
 
+    it('is a no-op when renaming to the same name', async () => {
+      const { result } = renderHook(() => useFileProcessor());
+
+      await act(async () => {
+        await result.current.addFiles([createMockFileWithPath('a.txt', 'root/a.txt')]);
+      });
+
+      act(() => {
+        result.current.renameFolder('root', 'root');
+      });
+
+      expect(result.current.files[0].normalizedPath).toBe('root/a.txt');
+    });
+
+    it('is a no-op for an empty folder path', async () => {
+      const { result } = renderHook(() => useFileProcessor());
+
+      await act(async () => {
+        await result.current.addFiles([createMockFileWithPath('a.txt', 'root/a.txt')]);
+      });
+
+      act(() => {
+        result.current.renameFolder('', 'newname');
+      });
+
+      expect(result.current.files[0].normalizedPath).toBe('root/a.txt');
+    });
+
     it('does not touch files outside the folder', async () => {
       const { result } = renderHook(() => useFileProcessor());
 
