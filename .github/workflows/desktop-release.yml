@@ -217,3 +217,12 @@ jobs:
             if git push origin main; then break; fi
             git pull --rebase origin main || true
           done
+
+      # GITHUB_TOKEN-pushed commits do not trigger `on: push` workflows
+      # (anti-loop safeguard), so the manifest commit above will not wake
+      # deploy.yml on its own. workflow_dispatch is exempt from that rule,
+      # so we explicitly kick the deploy here to ship the updated manifest.
+      - name: Trigger production deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref main
