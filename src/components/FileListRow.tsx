@@ -31,6 +31,9 @@ export function FileListRow({ file, selected, onToggleSelect, onRename }: FileLi
     opacity: isDragging ? 0.5 : undefined,
   };
 
+  const lastSlash = file.normalizedPath.lastIndexOf('/');
+  const folderPath = lastSlash >= 0 ? file.normalizedPath.slice(0, lastSlash) : '';
+
   return (
     <div
       ref={setNodeRef}
@@ -53,6 +56,14 @@ export function FileListRow({ file, selected, onToggleSelect, onRename }: FileLi
       />
       <FileListRowMeta file={file} />
       <FileListRowFilename file={file} onRename={onRename} />
+      {folderPath && (
+        <span
+          className="hidden sm:inline flex-shrink min-w-0 max-w-[40%] text-xs text-muted-foreground truncate font-mono"
+          title={folderPath}
+        >
+          {folderPath}
+        </span>
+      )}
       {file.needsNormalization && (
         <Badge variant="warning" className="flex-shrink-0 text-[10px] px-1.5 py-0">
           NFD

@@ -29,10 +29,8 @@ function App() {
     progress,
     addFiles,
     removeFiles,
-    removeFolderByPath,
     reorderFiles,
     renameFile,
-    renameFolder,
     clearFiles,
     downloadAsZip,
     downloadSingle,
@@ -141,7 +139,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
-      <div className="container mx-auto px-4 py-12 max-w-2xl">
+      <div className="container mx-auto px-4 py-12 max-w-3xl">
         {!isTauri() && <Header />}
 
         <main className="space-y-6">
@@ -179,8 +177,6 @@ function App() {
             files={files}
             onRemoveFiles={removeFiles}
             onRename={renameFile}
-            onRenameFolder={renameFolder}
-            onRemoveFolder={removeFolderByPath}
             onReorder={reorderFiles}
             onAddFiles={addFiles}
           />
