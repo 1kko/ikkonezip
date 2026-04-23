@@ -29,8 +29,10 @@ function App() {
     progress,
     addFiles,
     removeFiles,
+    removeFolderByPath,
     reorderFiles,
     renameFile,
+    renameFolder,
     clearFiles,
     downloadAsZip,
     downloadSingle,
@@ -177,6 +179,8 @@ function App() {
             files={files}
             onRemoveFiles={removeFiles}
             onRename={renameFile}
+            onRenameFolder={renameFolder}
+            onRemoveFolder={removeFolderByPath}
             onReorder={reorderFiles}
             onAddFiles={addFiles}
           />
