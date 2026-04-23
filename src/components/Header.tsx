@@ -2,11 +2,17 @@ import { FileArchive, Zap, Shield, WifiOff, FolderTree, Ban, Download, Archive }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { useDesktopRelease } from '@/hooks/useDesktopRelease';
+import { isMac } from '@/utils/platform';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || '맥윈집';
 
 export function Header() {
   const { canInstall, install } = usePWAInstall();
+  const release = useDesktopRelease();
+  // Mac users get the native DMG download (better experience than PWA install).
+  // Non-Mac users keep the PWA install prompt where supported.
+  const showMacDownload = isMac() && release !== null;
   return (
     <header className="text-center mb-10 animate-fadeIn">
       {/* Logo */}
@@ -56,8 +62,21 @@ export function Header() {
         </Badge>
       </div>
 
-      {/* Install button */}
-      {canInstall && (
+      {/* Mac native DMG download takes precedence over PWA install on macOS. */}
+      {showMacDownload ? (
+        <div className="mt-6 animate-fadeIn">
+          <Button
+            asChild
+            variant="outline"
+            className="gap-2 border-primary/30 hover:border-primary hover:bg-primary/5"
+          >
+            <a href={release!.downloadUrl} download>
+              <Download className="w-4 h-4" />
+              맥용 앱 다운로드 (v{release!.version})
+            </a>
+          </Button>
+        </div>
+      ) : canInstall ? (
         <div className="mt-6 animate-fadeIn">
           <Button
             onClick={install}
@@ -68,7 +87,7 @@ export function Header() {
             데스크탑에 설치
           </Button>
         </div>
-      )}
+      ) : null}
     </header>
   );
 }
