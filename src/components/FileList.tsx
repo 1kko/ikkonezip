@@ -29,15 +29,17 @@ interface SortState {
 interface ColumnWidths {
   name: number;
   size: number;
-  path: number;
 }
-const DEFAULT_WIDTHS: ColumnWidths = { name: 320, size: 80, path: 220 };
-const MIN_WIDTHS: ColumnWidths = { name: 120, size: 60, path: 80 };
-// Grid column: [checkbox | name (incl. icon + filename) | size | path]
+const DEFAULT_WIDTHS: ColumnWidths = { name: 320, size: 80 };
+const MIN_WIDTHS: ColumnWidths = { name: 120, size: 60 };
+// Grid column: [checkbox | name (incl. icon + filename) | size | path(auto-fills)]
 const CHECKBOX_COL = '20px';
+const MIN_PATH_WIDTH = 80;
+// Tailwind's gap-2 is 8px and the grid has 3 gaps between 4 columns.
+const GRID_GAP_TOTAL = 8 * 3;
 
 function buildGridTemplate(widths: ColumnWidths): string {
-  return `${CHECKBOX_COL} ${widths.name}px ${widths.size}px ${widths.path}px`;
+  return `${CHECKBOX_COL} ${widths.name}px ${widths.size}px minmax(${MIN_PATH_WIDTH}px, 1fr)`;
 }
 
 function folderOf(normalizedPath: string): string {
@@ -116,20 +118,45 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
     setSelectedIds(new Set());
   }, [selectedIds, onRemoveFiles]);
 
-  const resizingRef = useRef<{ key: keyof ColumnWidths; startX: number; startWidth: number } | null>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const resizingRef = useRef<{
+    key: keyof ColumnWidths;
+    startX: number;
+    startWidth: number;
+    /** Sibling resizable width captured at drag start — lets us clamp against container. */
+    otherWidth: number;
+    /** Parent content-box width captured at drag start. */
+    containerWidth: number;
+  } | null>(null);
 
   const startResize = useCallback((key: keyof ColumnWidths) => (e: PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-    resizingRef.current = { key, startX: e.clientX, startWidth: widths[key] };
+    const otherKey: keyof ColumnWidths = key === 'name' ? 'size' : 'name';
+    resizingRef.current = {
+      key,
+      startX: e.clientX,
+      startWidth: widths[key],
+      otherWidth: widths[otherKey],
+      containerWidth: tableRef.current?.clientWidth ?? 0,
+    };
   }, [widths]);
 
   const handleResizeMove = useCallback((e: PointerEvent<HTMLDivElement>) => {
     const ctx = resizingRef.current;
     if (!ctx) return;
     const delta = e.clientX - ctx.startX;
-    const next = Math.max(MIN_WIDTHS[ctx.key], ctx.startWidth + delta);
+    let next = Math.max(MIN_WIDTHS[ctx.key], ctx.startWidth + delta);
+    // Keep the grid inside the container: the path column must still have at
+    // least MIN_PATH_WIDTH after the user-resized column grows. 20px for the
+    // checkbox column, plus 3 gaps of 8px between columns.
+    if (ctx.containerWidth > 0) {
+      const available = ctx.containerWidth - 20 - GRID_GAP_TOTAL - ctx.otherWidth - MIN_PATH_WIDTH;
+      if (available >= MIN_WIDTHS[ctx.key]) {
+        next = Math.min(next, available);
+      }
+    }
     setWidths((w) => (w[ctx.key] === next ? w : { ...w, [ctx.key]: next }));
   }, []);
 
@@ -265,7 +292,7 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
           </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent ref={tableRef} className="pt-0 overflow-x-hidden">
         {showSearch && (
           <div className="flex items-center justify-end gap-3 px-4 py-3">
             {normalizedQuery.length > 0 && (
@@ -313,9 +340,6 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
             active={sort?.key === 'path'}
             direction={sort?.key === 'path' ? sort.direction : null}
             onClick={() => toggleSort('path')}
-            onResize={startResize('path')}
-            onResizeMove={handleResizeMove}
-            onResizeEnd={endResize}
             isLast
           />
         </div>
@@ -343,9 +367,9 @@ interface HeaderCellProps {
   active: boolean;
   direction: SortDirection | null;
   onClick: () => void;
-  onResize: (e: PointerEvent<HTMLDivElement>) => void;
-  onResizeMove: (e: PointerEvent<HTMLDivElement>) => void;
-  onResizeEnd: (e: PointerEvent<HTMLDivElement>) => void;
+  onResize?: (e: PointerEvent<HTMLDivElement>) => void;
+  onResizeMove?: (e: PointerEvent<HTMLDivElement>) => void;
+  onResizeEnd?: (e: PointerEvent<HTMLDivElement>) => void;
   align?: 'left' | 'right';
   /** Last column: no resize handle. */
   isLast?: boolean;
