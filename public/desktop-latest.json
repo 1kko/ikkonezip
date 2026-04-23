@@ -1,10 +1,10 @@
 {
-  "version": "0.1.1",
-  "releasedAt": "2026-04-22",
-  "notes": "DMG에 실행방법.txt 포함, Tauri 다크모드 시스템 추적, 검색바 여백/스크롤바 가시성 개선, 창 크기 680x900",
+  "version": "0.5.0",
+  "releasedAt": "2026-04-23",
+  "notes": "## What's Changed\n* Fix DMG download URL in desktop-release manifest by @1kko in https://github.com/1kko/ikkonezip/pull/59\n* Self-host desktop DMG via Dockerfile build-time fetch by @1kko in https://github.com/1kko/ikkonezip/pull/60\n* Authenticate Dockerfile DMG fetch (private re",
   "downloads": {
-    "macos": "https://zip.1kko.com/desktop/Zip_0.1.1_universal.dmg",
-    "windows": "",
-    "linux": ""
+    "macos": "https://zip.1kko.com/desktop/Zip_0.5.0_universal.dmg",
+    "windows": "https://zip.1kko.com/desktop/Zip_0.5.0_x64-setup.exe",
+    "linux": "https://zip.1kko.com/desktop/Zip_0.5.0_amd64.AppImage"
   }
 }
