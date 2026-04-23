@@ -118,7 +118,7 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
     setSelectedIds(new Set());
   }, [selectedIds, onRemoveFiles]);
 
-  const tableRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<ResizeObserver | null>(null);
   /** Content-box width of the grid row, kept fresh by the ResizeObserver. */
   const contentWidthRef = useRef<number>(0);
   const resizingRef = useRef<{
@@ -166,8 +166,14 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
   // previously-set name/size widths can now overflow. Shrink them to fit —
   // scale proportionally first, then redistribute if either column would fall
   // below its minimum.
-  useEffect(() => {
-    const el = tableRef.current;
+  //
+  // Attached via a callback ref rather than a useRef + useEffect because the
+  // FileList returns null while files is empty; on the 0→N transition the
+  // grid row mounts and this callback fires, which a plain useEffect with
+  // `[]` deps would miss.
+  const tableRef = useCallback((el: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
     if (!el) return;
 
     const clamp = (containerWidth: number) => {
@@ -200,9 +206,9 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
       });
     };
 
-    // ResizeObserver fires an initial callback on observe(), so we skip a
-    // manual read. contentRect is the element's content box (excludes the
-    // row's px-3 padding), matching what the grid columns actually get.
+    // ResizeObserver fires an initial callback on observe(). contentRect is
+    // the element's content box (excludes the row's px-3 padding), matching
+    // what the grid columns actually live inside.
     const ro = new ResizeObserver((entries) => {
       for (const entry of entries) {
         contentWidthRef.current = entry.contentRect.width;
@@ -210,8 +216,10 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
       }
     });
     ro.observe(el);
-    return () => ro.disconnect();
+    observerRef.current = ro;
   }, []);
+
+  useEffect(() => () => observerRef.current?.disconnect(), []);
 
   const endResize = useCallback((e: PointerEvent<HTMLDivElement>) => {
     const target = e.currentTarget as HTMLDivElement;
