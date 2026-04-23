@@ -24,10 +24,7 @@ export interface UseFileProcessorReturn {
   addFiles: (fileList: FileList | File[]) => Promise<void>;
   removeFile: (id: string) => void;
   removeFiles: (ids: string[]) => void;
-  removeFolderByPath: (folderPath: string) => void;
-  reorderFiles: (fromId: string, toId: string) => void;
   renameFile: (id: string, newName: string) => void;
-  renameFolder: (folderPath: string, newName: string) => void;
   clearFiles: () => void;
   downloadAsZip: (zipFilename?: string, options?: ZipOptions) => Promise<void>;
   downloadSingle: () => void;
@@ -194,19 +191,6 @@ export function useFileProcessor(): UseFileProcessorReturn {
     setFiles(prev => prev.filter(f => !idSet.has(f.id)));
   }, []);
 
-  const reorderFiles = useCallback((fromId: string, toId: string) => {
-    if (fromId === toId) return;
-    setFiles((prev) => {
-      const fromIdx = prev.findIndex((f) => f.id === fromId);
-      const toIdx = prev.findIndex((f) => f.id === toId);
-      if (fromIdx < 0 || toIdx < 0) return prev;
-      const next = prev.slice();
-      const [moved] = next.splice(fromIdx, 1);
-      next.splice(toIdx, 0, moved);
-      return next;
-    });
-  }, []);
-
   const renameFile = useCallback((id: string, newName: string) => {
     // Strip path separators (forward + backslash) and null bytes — defense
     // against path-injection in case the rename ever flows to a server path.
@@ -228,34 +212,6 @@ export function useFileProcessor(): UseFileProcessorReturn {
           normalizedPath: newPath,
         };
       })
-    );
-  }, []);
-
-  const renameFolder = useCallback((folderPath: string, newName: string) => {
-    // eslint-disable-next-line no-control-regex
-    const sanitized = newName.replace(/[/\\\x00]/g, '').trim();
-    if (sanitized.length === 0 || folderPath.length === 0) return;
-
-    const lastSlash = folderPath.lastIndexOf('/');
-    const parentPrefix = lastSlash >= 0 ? folderPath.slice(0, lastSlash + 1) : '';
-    const newFolderPath = parentPrefix + sanitized;
-    if (newFolderPath === folderPath) return;
-    const prefix = folderPath + '/';
-
-    setFiles((prev) =>
-      prev.map((f) =>
-        f.normalizedPath.startsWith(prefix)
-          ? { ...f, normalizedPath: newFolderPath + '/' + f.normalizedPath.slice(prefix.length) }
-          : f
-      )
-    );
-  }, []);
-
-  const removeFolderByPath = useCallback((folderPath: string) => {
-    if (folderPath.length === 0) return;
-    const prefix = folderPath + '/';
-    setFiles((prev) =>
-      prev.filter((f) => f.normalizedPath !== folderPath && !f.normalizedPath.startsWith(prefix))
     );
   }, []);
 
@@ -328,10 +284,7 @@ export function useFileProcessor(): UseFileProcessorReturn {
     addFiles,
     removeFile,
     removeFiles,
-    removeFolderByPath,
-    reorderFiles,
     renameFile,
-    renameFolder,
     clearFiles,
     downloadAsZip,
     downloadSingle,

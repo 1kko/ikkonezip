@@ -13,6 +13,12 @@ export interface Settings {
    * to surface a new-version toast. Web context ignores this setting entirely.
    */
   checkDesktopUpdates: boolean;
+  /**
+   * When true, the app hides the marketing header/footer and lets the
+   * container fill the viewport — useful in the Tauri desktop shell and
+   * for tight web viewports.
+   */
+  fullWidth: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -21,6 +27,7 @@ const DEFAULT_SETTINGS: Settings = {
   compressSingle: true,
   normalizationForm: 'NFC',
   checkDesktopUpdates: true,
+  fullWidth: false,
 };
 
 function loadSettings(): Settings {

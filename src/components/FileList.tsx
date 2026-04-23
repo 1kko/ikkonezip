@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo, useRef, type DragEvent } from 'react';
-import { FileText, Trash2, AlertTriangle, Plus } from 'lucide-react';
+import { useState, useCallback, useMemo, useRef, useEffect, type DragEvent, type PointerEvent } from 'react';
+import { FileText, Trash2, AlertTriangle, Plus, ChevronUp, ChevronDown, ChevronsUpDown, File } from 'lucide-react';
 import type { ProcessedFile } from '@/hooks/useFileProcessor';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,109 +7,95 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileListRow } from './FileListRow';
 import { FileListSearch } from './FileListSearch';
-import { FileTreeNode } from './FileTreeNode';
-import { buildFileTree } from '@/utils/buildFileTree';
 import { formatFileSize } from '@/utils/formatFileSize';
 import { cn } from '@/lib/utils';
 import { extractFilesFromDataTransfer } from '@/utils/extractFilesFromDataTransfer';
-import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
 
 interface FileListProps {
   files: ProcessedFile[];
   onRemoveFiles: (ids: string[]) => void;
   onRename: (id: string, newName: string) => void;
-  onReorder: (fromId: string, toId: string) => void;
-  /** Rename a folder by its full normalized path — propagates to every descendant file. */
-  onRenameFolder?: (folderPath: string, newName: string) => void;
-  /** Remove a folder and every descendant file by the folder's full normalized path. */
-  onRemoveFolder?: (folderPath: string) => void;
   /** When provided, the file list area becomes a drop target and a "파일 추가" button appears. */
   onAddFiles?: (files: FileList | File[]) => void;
+  /** Clears all files and error state — surfaced as the "새로 압축" button. */
+  onClearFiles?: () => void;
 }
 
-export function FileList({ files, onRemoveFiles, onRename, onReorder, onRenameFolder, onRemoveFolder, onAddFiles }: FileListProps) {
+type SortKey = 'name' | 'size' | 'path';
+type SortDirection = 'asc' | 'desc';
+interface SortState {
+  key: SortKey;
+  direction: SortDirection;
+}
+
+interface ColumnWidths {
+  name: number;
+  size: number;
+}
+const DEFAULT_WIDTHS: ColumnWidths = { name: 320, size: 80 };
+const MIN_WIDTHS: ColumnWidths = { name: 120, size: 60 };
+// Grid column: [checkbox | name (incl. icon + filename) | size | path(auto-fills)]
+const CHECKBOX_COL = '20px';
+const MIN_PATH_WIDTH = 80;
+// Tailwind's gap-2 is 8px and the grid has 3 gaps between 4 columns.
+const GRID_GAP_TOTAL = 8 * 3;
+
+function buildGridTemplate(widths: ColumnWidths): string {
+  return `${CHECKBOX_COL} ${widths.name}px ${widths.size}px minmax(${MIN_PATH_WIDTH}px, 1fr)`;
+}
+
+function folderOf(normalizedPath: string): string {
+  const i = normalizedPath.lastIndexOf('/');
+  return i >= 0 ? normalizedPath.slice(0, i) : '';
+}
+
+function compareFiles(a: ProcessedFile, b: ProcessedFile, key: SortKey): number {
+  switch (key) {
+    case 'name':
+      return a.normalizedName.localeCompare(b.normalizedName, 'ko');
+    case 'size':
+      return a.size - b.size;
+    case 'path':
+      return folderOf(a.normalizedPath).localeCompare(folderOf(b.normalizedPath), 'ko');
+  }
+}
+
+export function FileList({ files, onRemoveFiles, onRename, onAddFiles, onClearFiles }: FileListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [sort, setSort] = useState<SortState | null>(null);
+  const [widths, setWidths] = useState<ColumnWidths>(DEFAULT_WIDTHS);
 
   const showSearch = files.length >= 50;
   const normalizedQuery = useMemo(
     () => searchQuery.trim().toLowerCase(),
     [searchQuery]
   );
-  const visibleFiles = useMemo(() => {
+  const filteredFiles = useMemo(() => {
     if (normalizedQuery.length === 0) return files;
     return files.filter((f) =>
       f.normalizedName.toLowerCase().includes(normalizedQuery)
     );
   }, [files, normalizedQuery]);
-  const visibleFileIds = useMemo(() => new Set(visibleFiles.map((f) => f.id)), [visibleFiles]);
 
-  const hasFolders = useMemo(
-    () => files.some((f) => f.normalizedPath.includes('/')),
-    [files],
-  );
-  const tree = useMemo(() => buildFileTree(files), [files]);
+  const visibleFiles = useMemo(() => {
+    if (!sort) return filteredFiles;
+    const dir = sort.direction === 'asc' ? 1 : -1;
+    return [...filteredFiles].sort((a, b) => compareFiles(a, b, sort.key) * dir);
+  }, [filteredFiles, sort]);
 
-  // Folders are expanded by default; only explicitly collapsed folders are
-  // tracked. New folders that appear after a rename or upload are expanded
-  // automatically because their paths aren't in this set.
-  const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
-  const toggleExpand = useCallback((path: string) => {
-    setCollapsedFolders((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
+  const toggleSort = useCallback((key: SortKey) => {
+    setSort((prev) => {
+      if (!prev || prev.key !== key) return { key, direction: 'asc' };
+      return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
     });
   }, []);
-
-  // During search, force every folder that contains a match to be open.
-  const forceExpand = useMemo(() => {
-    if (normalizedQuery.length === 0) return null;
-    const paths = new Set<string>();
-    for (const f of visibleFiles) {
-      const parts = f.normalizedPath.split('/');
-      let acc = '';
-      for (let i = 0; i < parts.length - 1; i++) {
-        acc = acc ? `${acc}/${parts[i]}` : parts[i];
-        paths.add(acc);
-      }
-    }
-    return paths;
-  }, [normalizedQuery, visibleFiles]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const toggleSelectMany = useCallback((ids: string[], select: boolean) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      for (const id of ids) {
-        if (select) next.add(id);
-        else next.delete(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }, []);
@@ -134,26 +120,114 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder, onRenameFo
     setSelectedIds(new Set());
   }, [selectedIds, onRemoveFiles]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
+  const observerRef = useRef<ResizeObserver | null>(null);
+  /** Content-box width of the grid row, kept fresh by the ResizeObserver. */
+  const contentWidthRef = useRef<number>(0);
+  const resizingRef = useRef<{
+    key: keyof ColumnWidths;
+    startX: number;
+    startWidth: number;
+    /** Sibling resizable width captured at drag start — lets us clamp against container. */
+    otherWidth: number;
+    /** Parent content-box width captured at drag start. */
+    containerWidth: number;
+  } | null>(null);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    if (hasFolders) {
-      // In tree mode, only reorder within the same parent folder. Cross-folder
-      // drag is out of scope for this iteration.
-      const fromPath = files.find((f) => f.id === active.id)?.normalizedPath;
-      const toPath = files.find((f) => f.id === over.id)?.normalizedPath;
-      if (!fromPath || !toPath) return;
-      const fromParent = fromPath.slice(0, fromPath.lastIndexOf('/'));
-      const toParent = toPath.slice(0, toPath.lastIndexOf('/'));
-      if (fromParent !== toParent) return;
+  const startResize = useCallback((key: keyof ColumnWidths) => (e: PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    const otherKey: keyof ColumnWidths = key === 'name' ? 'size' : 'name';
+    resizingRef.current = {
+      key,
+      startX: e.clientX,
+      startWidth: widths[key],
+      otherWidth: widths[otherKey],
+      containerWidth: contentWidthRef.current,
+    };
+  }, [widths]);
+
+  const handleResizeMove = useCallback((e: PointerEvent<HTMLDivElement>) => {
+    const ctx = resizingRef.current;
+    if (!ctx) return;
+    const delta = e.clientX - ctx.startX;
+    let next = Math.max(MIN_WIDTHS[ctx.key], ctx.startWidth + delta);
+    // Keep the grid inside the container: the path column must still have at
+    // least MIN_PATH_WIDTH after the user-resized column grows. 20px for the
+    // checkbox column, plus 3 gaps of 8px between columns.
+    if (ctx.containerWidth > 0) {
+      const available = ctx.containerWidth - 20 - GRID_GAP_TOTAL - ctx.otherWidth - MIN_PATH_WIDTH;
+      if (available >= MIN_WIDTHS[ctx.key]) {
+        next = Math.min(next, available);
+      }
     }
-    onReorder(String(active.id), String(over.id));
-  }, [onReorder, hasFolders, files]);
+    setWidths((w) => (w[ctx.key] === next ? w : { ...w, [ctx.key]: next }));
+  }, []);
+
+  // When the container narrows (viewport resize, full-width toggle off), the
+  // previously-set name/size widths can now overflow. Shrink them to fit —
+  // scale proportionally first, then redistribute if either column would fall
+  // below its minimum.
+  //
+  // Attached via a callback ref rather than a useRef + useEffect because the
+  // FileList returns null while files is empty; on the 0→N transition the
+  // grid row mounts and this callback fires, which a plain useEffect with
+  // `[]` deps would miss.
+  const tableRef = useCallback((el: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+    if (!el) return;
+
+    const clamp = (containerWidth: number) => {
+      if (containerWidth <= 0) return;
+      const available = containerWidth - 20 - GRID_GAP_TOTAL - MIN_PATH_WIDTH;
+      setWidths((w) => {
+        const total = w.name + w.size;
+        if (total <= available) return w;
+
+        const scale = available / total;
+        let nextName = Math.floor(w.name * scale);
+        let nextSize = Math.floor(w.size * scale);
+
+        // Proportional scaling can push one column below its minimum while
+        // the other still has slack. Pin the column that hit min and give
+        // the remainder to the other (down to its own min).
+        if (nextSize < MIN_WIDTHS.size) {
+          nextSize = MIN_WIDTHS.size;
+          nextName = available - nextSize;
+        } else if (nextName < MIN_WIDTHS.name) {
+          nextName = MIN_WIDTHS.name;
+          nextSize = available - nextName;
+        }
+
+        nextName = Math.max(MIN_WIDTHS.name, nextName);
+        nextSize = Math.max(MIN_WIDTHS.size, nextSize);
+
+        if (nextName === w.name && nextSize === w.size) return w;
+        return { name: nextName, size: nextSize };
+      });
+    };
+
+    // ResizeObserver fires an initial callback on observe(). contentRect is
+    // the element's content box (excludes the row's px-3 padding), matching
+    // what the grid columns actually live inside.
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        contentWidthRef.current = entry.contentRect.width;
+        clamp(entry.contentRect.width);
+      }
+    });
+    ro.observe(el);
+    observerRef.current = ro;
+  }, []);
+
+  useEffect(() => () => observerRef.current?.disconnect(), []);
+
+  const endResize = useCallback((e: PointerEvent<HTMLDivElement>) => {
+    const target = e.currentTarget as HTMLDivElement;
+    if (target.hasPointerCapture(e.pointerId)) target.releasePointerCapture(e.pointerId);
+    resizingRef.current = null;
+  }, []);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
@@ -169,7 +243,6 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder, onRenameFo
     if (!onAddFiles) return;
     e.preventDefault();
     e.stopPropagation();
-    // Only clear when truly leaving the Card boundary, not when crossing a child.
     if (e.currentTarget.contains(e.relatedTarget as Node)) return;
     setIsDraggingOver(false);
   }, [onAddFiles]);
@@ -203,6 +276,7 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder, onRenameFo
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
   const filesNeedingNormalization = files.filter(f => f.needsNormalization).length;
   const allVisibleSelected = visibleFiles.length > 0 && visibleFiles.every(f => selectedIds.has(f.id));
+  const gridTemplateColumns = buildGridTemplate(widths);
 
   return (
     <Card
@@ -221,8 +295,20 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder, onRenameFo
         </div>
       )}
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
+            {onClearFiles && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onClearFiles}
+                className="gap-1.5"
+              >
+                <File className="w-4 h-4" />
+                새로 압축
+              </Button>
+            )}
             <Badge variant="outline" className="gap-1.5">
               <FileText className="w-3 h-3" />
               {files.length}개 파일
@@ -244,106 +330,161 @@ export function FileList({ files, onRemoveFiles, onRename, onReorder, onRenameFo
             className="hidden"
             onChange={handleFilePicked}
           />
-          {onAddFiles && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleAddClick}
-              className="gap-1.5"
-            >
-              <Plus className="h-4 w-4" />
-              파일 추가
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRemoveSelected}
-            disabled={selectedIds.size === 0}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
-          >
-            <Trash2 className="w-4 h-4" />
-            선택 삭제
-            {selectedIds.size > 0 && (
-              <span className="ml-0.5 text-xs">({selectedIds.size})</span>
+          <div className="flex items-center gap-2 ml-auto">
+            {onAddFiles && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddClick}
+                className="gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                파일 추가
+              </Button>
             )}
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRemoveSelected}
+              disabled={selectedIds.size === 0}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
+            >
+              <Trash2 className="w-4 h-4" />
+              선택 삭제
+              {selectedIds.size > 0 && (
+                <span className="ml-0.5 text-xs">({selectedIds.size})</span>
+              )}
+            </Button>
+          </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 overflow-x-hidden">
         {showSearch && (
-          <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <FileListSearch value={searchQuery} onChange={setSearchQuery} />
+          <div className="flex items-center justify-end gap-3 px-4 py-3">
             {normalizedQuery.length > 0 && (
               <Badge variant="secondary">
                 검색 활성: {visibleFiles.length}개 표시
               </Badge>
             )}
+            <FileListSearch value={searchQuery} onChange={setSearchQuery} />
           </div>
         )}
-        <ScrollArea className="max-h-72 custom-scrollbar pr-3">
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-              <input
-                type="checkbox"
-                aria-label="전체 선택"
-                checked={allVisibleSelected}
-                onChange={toggleSelectAll}
-                className="w-3.5 h-3.5 rounded border-input accent-primary cursor-pointer"
+        <ScrollArea className="max-h-80 overflow-y-auto overflow-x-hidden custom-scrollbar">
+          {/* Header row lives inside the same scroll container as the rows so
+              both share identical content width — prevents the last column
+              from spilling when the scrollbar gutter differs. */}
+          <div
+            ref={tableRef}
+            role="row"
+            style={{ gridTemplateColumns }}
+            className="sticky top-0 z-10 bg-card grid items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground select-none border-b"
+          >
+            <input
+              type="checkbox"
+              aria-label="전체 선택"
+              checked={allVisibleSelected}
+              onChange={toggleSelectAll}
+              className="w-3.5 h-3.5 rounded border-input accent-primary cursor-pointer"
+            />
+            <HeaderCell
+              label="이름"
+              active={sort?.key === 'name'}
+              direction={sort?.key === 'name' ? sort.direction : null}
+              onClick={() => toggleSort('name')}
+              onResize={startResize('name')}
+              onResizeMove={handleResizeMove}
+              onResizeEnd={endResize}
+            />
+            <HeaderCell
+              label="크기"
+              active={sort?.key === 'size'}
+              direction={sort?.key === 'size' ? sort.direction : null}
+              onClick={() => toggleSort('size')}
+              align="right"
+              onResize={startResize('size')}
+              onResizeMove={handleResizeMove}
+              onResizeEnd={endResize}
+            />
+            <HeaderCell
+              label="경로"
+              active={sort?.key === 'path'}
+              direction={sort?.key === 'path' ? sort.direction : null}
+              onClick={() => toggleSort('path')}
+              isLast
+            />
+          </div>
+          <div className="space-y-2 pt-2">
+            {visibleFiles.map((file) => (
+              <FileListRow
+                key={file.id}
+                file={file}
+                selected={selectedIds.has(file.id)}
+                onToggleSelect={toggleSelect}
+                onRename={onRename}
+                gridTemplateColumns={gridTemplateColumns}
               />
-              전체 선택
-            </label>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              {hasFolders ? (
-                <SortableContext
-                  items={tree.filter((n) => n.kind === 'file').map((n) => (n.kind === 'file' ? n.id : ''))}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-1">
-                    {tree.map((node) => (
-                      <FileTreeNode
-                        key={node.kind === 'folder' ? `folder:${node.path}` : `file:${node.id}`}
-                        node={node}
-                        depth={0}
-                        collapsed={collapsedFolders}
-                        forceExpand={forceExpand}
-                        selectedIds={selectedIds}
-                        visibleFileIds={visibleFileIds}
-                        onToggleExpand={toggleExpand}
-                        onToggleSelect={toggleSelect}
-                        onToggleSelectMany={toggleSelectMany}
-                        onRenameFile={onRename}
-                        onRenameFolder={onRenameFolder ?? (() => {})}
-                        onRemoveFolder={onRemoveFolder ?? (() => {})}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              ) : (
-                <SortableContext
-                  items={visibleFiles.map((f) => f.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {visibleFiles.map((file) => (
-                    <FileListRow
-                      key={file.id}
-                      file={file}
-                      selected={selectedIds.has(file.id)}
-                      onToggleSelect={toggleSelect}
-                      onRename={onRename}
-                    />
-                  ))}
-                </SortableContext>
-              )}
-            </DndContext>
+            ))}
           </div>
         </ScrollArea>
       </CardContent>
     </Card>
+  );
+}
+
+interface HeaderCellProps {
+  label: string;
+  active: boolean;
+  direction: SortDirection | null;
+  onClick: () => void;
+  onResize?: (e: PointerEvent<HTMLDivElement>) => void;
+  onResizeMove?: (e: PointerEvent<HTMLDivElement>) => void;
+  onResizeEnd?: (e: PointerEvent<HTMLDivElement>) => void;
+  align?: 'left' | 'right';
+  /** Last column: no resize handle. */
+  isLast?: boolean;
+}
+
+function HeaderCell({
+  label,
+  active,
+  direction,
+  onClick,
+  onResize,
+  onResizeMove,
+  onResizeEnd,
+  align = 'left',
+  isLast,
+}: HeaderCellProps) {
+  return (
+    <div className="relative flex items-center min-w-0">
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          "flex items-center gap-1 w-full hover:text-foreground transition-colors",
+          align === 'right' && "justify-end"
+        )}
+      >
+        <span className="truncate">{label}</span>
+        {active && direction === 'asc' && <ChevronUp className="w-3 h-3" />}
+        {active && direction === 'desc' && <ChevronDown className="w-3 h-3" />}
+        {!active && <ChevronsUpDown className="w-3 h-3 opacity-40" />}
+      </button>
+      {!isLast && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={`${label} 컬럼 너비 조절`}
+          onPointerDown={onResize}
+          onPointerMove={onResizeMove}
+          onPointerUp={onResizeEnd}
+          onPointerCancel={onResizeEnd}
+          className="absolute -right-1 top-0 h-full w-2 cursor-col-resize flex items-center justify-center group/resize"
+        >
+          <div className="w-px h-3 bg-border group-hover/resize:bg-primary transition-colors" />
+        </div>
+      )}
+    </div>
   );
 }

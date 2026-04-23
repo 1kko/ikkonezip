@@ -21,7 +21,7 @@ function makeFile(overrides: Partial<ProcessedFile> = {}): ProcessedFile {
 
 describe('FileList', () => {
   it('renders nothing when files array is empty', () => {
-    const { container } = render(<FileList files={[]} onRemoveFiles={vi.fn()} onRename={vi.fn()} onReorder={vi.fn()} />);
+    const { container } = render(<FileList files={[]} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
     expect(container.firstChild).toBeNull();
   });
 
@@ -31,7 +31,7 @@ describe('FileList', () => {
       makeFile({ id: '2', path: 'b.txt' }),
       makeFile({ id: '3', path: 'c.txt' }),
     ];
-    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} onReorder={vi.fn()} />);
+    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
     expect(screen.getByText('a.txt')).toBeInTheDocument();
     expect(screen.getByText('b.txt')).toBeInTheDocument();
     expect(screen.getByText('c.txt')).toBeInTheDocument();
@@ -39,7 +39,7 @@ describe('FileList', () => {
 
   it('shows total file count badge', () => {
     const files = [makeFile({ id: '1' }), makeFile({ id: '2' })];
-    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} onReorder={vi.fn()} />);
+    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
     expect(screen.getByText('2개 파일')).toBeInTheDocument();
   });
 
@@ -48,14 +48,14 @@ describe('FileList', () => {
       makeFile({ id: '1', needsNormalization: true }),
       makeFile({ id: '2', needsNormalization: false }),
     ];
-    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} onReorder={vi.fn()} />);
+    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
     expect(screen.getByText('1개 정규화 필요')).toBeInTheDocument();
   });
 
   it('select-all toggles all rows', () => {
     const files = [makeFile({ id: '1' }), makeFile({ id: '2' })];
     const onRemoveFiles = vi.fn();
-    render(<FileList files={files} onRemoveFiles={onRemoveFiles} onRename={vi.fn()} onReorder={vi.fn()} />);
+    render(<FileList files={files} onRemoveFiles={onRemoveFiles} onRename={vi.fn()} />);
 
     const selectAll = screen.getByRole('checkbox', { name: '전체 선택' });
     fireEvent.click(selectAll);
@@ -67,7 +67,7 @@ describe('FileList', () => {
   });
 
   it('remove-selected button is disabled when nothing selected', () => {
-    render(<FileList files={[makeFile({ id: '1' })]} onRemoveFiles={vi.fn()} onRename={vi.fn()} onReorder={vi.fn()} />);
+    render(<FileList files={[makeFile({ id: '1' })]} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
     const removeBtn = screen.getByRole('button', { name: /선택 삭제/ });
     expect(removeBtn).toBeDisabled();
   });
@@ -96,7 +96,7 @@ describe('FileList — search/filter at ≥50 files', () => {
         files={makeFiles(49)}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
-        onReorder={vi.fn()}
+       
       />
     );
     expect(screen.queryByPlaceholderText('파일 이름 검색…')).not.toBeInTheDocument();
@@ -108,7 +108,7 @@ describe('FileList — search/filter at ≥50 files', () => {
         files={makeFiles(50)}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
-        onReorder={vi.fn()}
+       
       />
     );
     expect(screen.getByPlaceholderText('파일 이름 검색…')).toBeInTheDocument();
@@ -120,7 +120,7 @@ describe('FileList — search/filter at ≥50 files', () => {
         files={makeFiles(50)}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
-        onReorder={vi.fn()}
+       
       />
     );
     const input = screen.getByPlaceholderText('파일 이름 검색…');
@@ -136,7 +136,7 @@ describe('FileList — search/filter at ≥50 files', () => {
         files={makeFiles(50)}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
-        onReorder={vi.fn()}
+       
       />
     );
     fireEvent.change(screen.getByPlaceholderText('파일 이름 검색…'), {
@@ -152,7 +152,7 @@ describe('FileList — search/filter at ≥50 files', () => {
         files={makeFiles(50)}
         onRemoveFiles={onRemove}
         onRename={vi.fn()}
-        onReorder={vi.fn()}
+       
       />
     );
 
@@ -168,91 +168,68 @@ describe('FileList — search/filter at ≥50 files', () => {
   });
 });
 
-describe('FileList — folder tree mode', () => {
-  function folderFile(id: string, path: string): ProcessedFile {
-    const name = path.split('/').pop()!;
-    return {
-      id,
-      file: new File(['x'], name, { type: 'text/plain' }),
-      originalName: name,
-      normalizedName: name,
-      path,
-      normalizedPath: path,
-      needsNormalization: false,
-      size: 100,
-    };
-  }
-
-  it('renders folder rows with file counts when files contain slashes', () => {
+describe('FileList — path column', () => {
+  it('shows the folder prefix in the path column for nested files', () => {
     const files = [
-      folderFile('1', 'root/a.txt'),
-      folderFile('2', 'root/b.txt'),
-      folderFile('3', 'other.txt'),
+      makeFile({ id: '1', path: 'MyFolder/sub/a.txt', normalizedPath: 'MyFolder/sub/a.txt', normalizedName: 'a.txt' }),
+      makeFile({ id: '2', path: 'loose.txt', normalizedPath: 'loose.txt', normalizedName: 'loose.txt' }),
     ];
     render(
-      <FileList
-        files={files}
-        onRemoveFiles={vi.fn()}
-        onRename={vi.fn()}
-        onReorder={vi.fn()}
-        onRenameFolder={vi.fn()}
-        onRemoveFolder={vi.fn()}
-      />
+      <FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} />
     );
-    expect(screen.getByText('root')).toBeInTheDocument();
-    // Folder badge shows 2개
-    expect(screen.getByText('2개')).toBeInTheDocument();
-    // Root-level loose file still rendered
-    expect(screen.getByText('other.txt')).toBeInTheDocument();
+    expect(screen.getByText('MyFolder/sub')).toBeInTheDocument();
+    // Loose root-level file shows an em dash placeholder in the path cell.
+    expect(screen.getByText('—')).toBeInTheDocument();
+  });
+});
+
+describe('FileList — sortable header', () => {
+  it('sorts by name ascending on first click, descending on second', () => {
+    const files = [
+      makeFile({ id: '1', path: 'banana.txt', normalizedName: 'banana.txt' }),
+      makeFile({ id: '2', path: 'apple.txt', normalizedName: 'apple.txt' }),
+      makeFile({ id: '3', path: 'cherry.txt', normalizedName: 'cherry.txt' }),
+    ];
+    const { container } = render(
+      <FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} />
+    );
+
+    const nameHeader = screen.getByRole('button', { name: /이름/ });
+    fireEvent.click(nameHeader);
+
+    const readTitles = () =>
+      Array.from(container.querySelectorAll('div[title]'))
+        .map((el) => el.getAttribute('title'))
+        .filter((t): t is string => !!t && ['apple.txt', 'banana.txt', 'cherry.txt'].includes(t));
+
+    expect(readTitles()).toEqual(['apple.txt', 'banana.txt', 'cherry.txt']);
+
+    fireEvent.click(nameHeader);
+    expect(readTitles()).toEqual(['cherry.txt', 'banana.txt', 'apple.txt']);
   });
 
-  it('calls onRemoveFolder when the folder delete button is clicked', () => {
-    const onRemoveFolder = vi.fn();
-    render(
-      <FileList
-        files={[folderFile('1', 'root/a.txt'), folderFile('2', 'root/b.txt')]}
-        onRemoveFiles={vi.fn()}
-        onRename={vi.fn()}
-        onReorder={vi.fn()}
-        onRenameFolder={vi.fn()}
-        onRemoveFolder={onRemoveFolder}
-      />
+  it('sorts by size when the size header is clicked', () => {
+    const files = [
+      makeFile({ id: 'a', path: 'a.txt', normalizedName: 'a.txt', size: 300 }),
+      makeFile({ id: 'b', path: 'b.txt', normalizedName: 'b.txt', size: 100 }),
+      makeFile({ id: 'c', path: 'c.txt', normalizedName: 'c.txt', size: 200 }),
+    ];
+    const { container } = render(
+      <FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} />
     );
-    fireEvent.click(screen.getByRole('button', { name: 'root 폴더 삭제' }));
-    expect(onRemoveFolder).toHaveBeenCalledWith('root');
+    fireEvent.click(screen.getByRole('button', { name: /크기/ }));
+    const titles = Array.from(container.querySelectorAll('div[title]'))
+      .map((el) => el.getAttribute('title'))
+      .filter((t): t is string => !!t && ['a.txt', 'b.txt', 'c.txt'].includes(t));
+    expect(titles).toEqual(['b.txt', 'c.txt', 'a.txt']);
   });
 
-  it('folder checkbox selects every descendant', () => {
-    const onRemoveFiles = vi.fn();
-    render(
-      <FileList
-        files={[folderFile('1', 'root/a.txt'), folderFile('2', 'root/b.txt')]}
-        onRemoveFiles={onRemoveFiles}
-        onRename={vi.fn()}
-        onReorder={vi.fn()}
-        onRenameFolder={vi.fn()}
-        onRemoveFolder={vi.fn()}
-      />
-    );
-    fireEvent.click(screen.getByRole('checkbox', { name: 'root 전체 선택' }));
-    fireEvent.click(screen.getByRole('button', { name: /선택 삭제/ }));
-    expect(onRemoveFiles).toHaveBeenCalledWith(expect.arrayContaining(['1', '2']));
-  });
-
-  it('collapses a folder and hides its descendant file rows', () => {
-    render(
-      <FileList
-        files={[folderFile('1', 'root/a.txt'), folderFile('2', 'root/b.txt')]}
-        onRemoveFiles={vi.fn()}
-        onRename={vi.fn()}
-        onReorder={vi.fn()}
-        onRenameFolder={vi.fn()}
-        onRemoveFolder={vi.fn()}
-      />
-    );
-    expect(screen.getByText('a.txt')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '폴더 접기' }));
-    expect(screen.queryByText('a.txt')).not.toBeInTheDocument();
+  it('exposes resize separators for the resizable columns', () => {
+    render(<FileList files={[makeFile({ id: '1' })]} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
+    expect(screen.getByRole('separator', { name: /이름 컬럼 너비 조절/ })).toBeInTheDocument();
+    expect(screen.getByRole('separator', { name: /크기 컬럼 너비 조절/ })).toBeInTheDocument();
+    // Last column ("경로") has no trailing handle.
+    expect(screen.queryByRole('separator', { name: /경로 컬럼 너비 조절/ })).not.toBeInTheDocument();
   });
 });
 
@@ -276,7 +253,7 @@ describe('FileList — add files (Phase 4)', () => {
         files={[makeFile('a.txt')]}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
-        onReorder={vi.fn()}
+       
         onAddFiles={vi.fn()}
       />
     );
@@ -289,7 +266,7 @@ describe('FileList — add files (Phase 4)', () => {
         files={[makeFile('a.txt')]}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
-        onReorder={vi.fn()}
+       
       />
     );
     expect(screen.queryByRole('button', { name: '파일 추가' })).not.toBeInTheDocument();
@@ -302,7 +279,7 @@ describe('FileList — add files (Phase 4)', () => {
         files={[makeFile('a.txt')]}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
-        onReorder={vi.fn()}
+       
         onAddFiles={onAddFiles}
       />
     );
@@ -327,7 +304,7 @@ describe('FileList — add files (Phase 4)', () => {
         files={[makeFile('a.txt')]}
         onRemoveFiles={vi.fn()}
         onRename={vi.fn()}
-        onReorder={vi.fn()}
+       
         onAddFiles={vi.fn()}
       />
     );
