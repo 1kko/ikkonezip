@@ -12,44 +12,48 @@ COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY nginx-snippets/security_headers.conf /etc/nginx/snippets/security_headers.conf
 
-# Fetch the current desktop DMG from GitHub Releases at build time and embed
-# it into nginx's html dir. This is what enables the user-facing download URL
-# to live on our own domain (https://zip.1kko.com/desktop/...) without
-# requiring SSH from CI to the host. The fetch is fail-soft: a transient GH
-# outage during build leaves the new image without /desktop/, but the
-# previously-running container keeps serving with the previous image.
+# Fetch the current desktop installers (macOS DMG, Windows NSIS, Linux
+# AppImage) from GitHub Releases at build time and embed each into nginx's
+# html dir under /desktop/. The user-facing download URLs all live on our
+# own domain (https://zip.1kko.com/desktop/...) — no SSH from CI to host
+# required. Each fetch is fail-soft so a single missing/broken artifact
+# doesn't block the image build.
 #
-# AUTH: ikkonezip is a private repo. GitHub's /releases/download/{tag}/{name}
-# URL (browser_download_url) does NOT honor Bearer tokens for private repos —
-# it uses session-cookie auth only and 404s for any programmatic Bearer call.
-# The REST API endpoint /repos/{owner}/{repo}/releases/assets/{id} DOES honor
-# Bearer + redirects to a presigned S3 URL. So we look up the asset ID from
-# the tag, then download via the asset API.
+# AUTH (private repo): GitHub's /releases/download/{tag}/{name} URL does
+# NOT honor Bearer tokens for private repos. The REST API endpoint
+# /repos/{owner}/{repo}/releases/assets/{id} DOES — it 302-redirects to a
+# presigned S3 URL. So we look up each asset's ID from the tag, then
+# download via the asset API.
 #
 # Coolify passes a fine-grained PAT (contents:read) as the
-# GITHUB_TOKEN_DESKTOP_FETCH build arg. If empty (e.g. local docker build
-# without the arg), the API call fails and the fail-soft fallback skips
-# the DMG so the build still succeeds.
+# GITHUB_TOKEN_DESKTOP_FETCH build arg. Empty token still builds (the API
+# call fails and the fail-soft fallback skips the artifact).
 ARG GITHUB_TOKEN_DESKTOP_FETCH=""
 COPY public/desktop-latest.json /tmp/manifest.json
 RUN apk add --no-cache curl jq && \
     VERSION=$(jq -r '.version' /tmp/manifest.json) && \
     if [ -n "$VERSION" ] && [ "$VERSION" != "null" ] && [ "$VERSION" != "0.0.0" ]; then \
-      DMG="Zip_${VERSION}_universal.dmg"; \
       mkdir -p /usr/share/nginx/html/desktop; \
-      ASSET_ID=$(curl -fsSL \
+      RELEASE_JSON=$(curl -fsSL \
         -H "Authorization: Bearer ${GITHUB_TOKEN_DESKTOP_FETCH}" \
-        "https://api.github.com/repos/1kko/ikkonezip/releases/tags/v${VERSION}-desktop" \
-        | jq -r --arg name "$DMG" '.assets[] | select(.name == $name) | .id' | head -1); \
-      if [ -n "$ASSET_ID" ]; then \
-        curl -fsSL --retry 3 \
-          -H "Authorization: Bearer ${GITHUB_TOKEN_DESKTOP_FETCH}" \
-          -H "Accept: application/octet-stream" \
-          -o "/usr/share/nginx/html/desktop/${DMG}" \
-          "https://api.github.com/repos/1kko/ikkonezip/releases/assets/${ASSET_ID}" \
-          || echo "WARN: DMG fetch failed for v${VERSION}; /desktop/${DMG} will 404"; \
+        "https://api.github.com/repos/1kko/ikkonezip/releases/tags/v${VERSION}-desktop" || echo ""); \
+      if [ -n "$RELEASE_JSON" ]; then \
+        for SUFFIX in ".dmg" "-setup.exe" ".AppImage"; do \
+          ASSET_NAME=$(printf '%s' "$RELEASE_JSON" | jq -r --arg suf "$SUFFIX" '[.assets[] | select(.name | endswith($suf))][0].name'); \
+          ASSET_ID=$(printf '%s' "$RELEASE_JSON" | jq -r --arg suf "$SUFFIX" '[.assets[] | select(.name | endswith($suf))][0].id'); \
+          if [ -n "$ASSET_ID" ] && [ "$ASSET_ID" != "null" ]; then \
+            curl -fsSL --retry 3 \
+              -H "Authorization: Bearer ${GITHUB_TOKEN_DESKTOP_FETCH}" \
+              -H "Accept: application/octet-stream" \
+              -o "/usr/share/nginx/html/desktop/${ASSET_NAME}" \
+              "https://api.github.com/repos/1kko/ikkonezip/releases/assets/${ASSET_ID}" \
+              || echo "WARN: fetch failed for ${ASSET_NAME}; will 404"; \
+          else \
+            echo "WARN: no asset matching *${SUFFIX} found in release v${VERSION}-desktop"; \
+          fi; \
+        done; \
       else \
-        echo "WARN: no asset matching ${DMG} found in release v${VERSION}-desktop"; \
+        echo "WARN: release v${VERSION}-desktop not reachable; /desktop/ will be empty"; \
       fi; \
     fi && \
     rm -f /tmp/manifest.json && \

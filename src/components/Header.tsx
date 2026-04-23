@@ -2,17 +2,35 @@ import { FileArchive, Zap, Shield, WifiOff, FolderTree, Ban, Download, Archive }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
-import { useDesktopRelease } from '@/hooks/useDesktopRelease';
-import { isMac } from '@/utils/platform';
+import { useDesktopRelease, type DesktopPlatform } from '@/hooks/useDesktopRelease';
+import { detectPlatform } from '@/utils/platform';
+import { MacIcon, WindowsIcon, LinuxIcon } from '@/components/icons/OsIcons';
+import { cn } from '@/lib/utils';
+import type { ComponentType, SVGProps } from 'react';
 
 const APP_NAME = import.meta.env.VITE_APP_NAME || '맥윈집';
+
+interface PlatformButton {
+  platform: DesktopPlatform;
+  label: string;
+  Icon: ComponentType<SVGProps<SVGSVGElement>>;
+}
+
+const PLATFORMS: PlatformButton[] = [
+  { platform: 'macos', label: 'Mac', Icon: MacIcon },
+  { platform: 'windows', label: 'Windows', Icon: WindowsIcon },
+  { platform: 'linux', label: 'Linux', Icon: LinuxIcon },
+];
 
 export function Header() {
   const { canInstall, install } = usePWAInstall();
   const release = useDesktopRelease();
-  // Mac users get the native DMG download (better experience than PWA install).
-  // Non-Mac users keep the PWA install prompt where supported.
-  const showMacDownload = isMac() && release !== null;
+  const detected = detectPlatform();
+
+  const availablePlatforms = release
+    ? PLATFORMS.filter((p) => release.downloads[p.platform])
+    : [];
+
   return (
     <header className="text-center mb-10 animate-fadeIn">
       {/* Logo */}
@@ -62,19 +80,39 @@ export function Header() {
         </Badge>
       </div>
 
-      {/* Mac native DMG download takes precedence over PWA install on macOS. */}
-      {showMacDownload ? (
+      {/* Per-platform native installer download row. The button matching the
+          visitor's detected OS is highlighted; the others stay available so a
+          user on macOS can still grab the Windows/Linux build for someone
+          else. Falls back to the PWA install prompt when no native build is
+          listed in the manifest. */}
+      {availablePlatforms.length > 0 ? (
         <div className="mt-6 animate-fadeIn">
-          <Button
-            asChild
-            variant="outline"
-            className="gap-2 border-primary/30 hover:border-primary hover:bg-primary/5"
-          >
-            <a href={release!.downloadUrl} download>
-              <Download className="w-4 h-4" />
-              맥용 앱 다운로드 (v{release!.version})
-            </a>
-          </Button>
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            {availablePlatforms.map(({ platform, label, Icon }) => {
+              const url = release!.downloads[platform];
+              const isPrimary = detected === platform;
+              return (
+                <Button
+                  key={platform}
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    'gap-2',
+                    isPrimary && 'border-primary/30 hover:border-primary hover:bg-primary/5',
+                  )}
+                >
+                  <a href={url} download>
+                    <Icon className="w-4 h-4" />
+                    {label} 다운로드
+                  </a>
+                </Button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            v{release!.version} · 데스크톱 앱 다운로드
+          </p>
         </div>
       ) : canInstall ? (
         <div className="mt-6 animate-fadeIn">

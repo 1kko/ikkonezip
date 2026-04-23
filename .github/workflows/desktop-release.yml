@@ -7,8 +7,30 @@ on:
 
 jobs:
   build:
-    name: Build universal DMG
-    runs-on: macos-14
+    name: Build (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos
+            os: macos-14
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            tauri_args: --target universal-apple-darwin
+            artifact_dir: app/src-tauri/target/universal-apple-darwin/release/bundle/dmg
+            artifact_glob: "*.dmg"
+          - platform: windows
+            os: windows-latest
+            rust_targets: x86_64-pc-windows-msvc
+            tauri_args: --target x86_64-pc-windows-msvc
+            artifact_dir: app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis
+            artifact_glob: "*-setup.exe"
+          - platform: linux
+            os: ubuntu-22.04
+            rust_targets: x86_64-unknown-linux-gnu
+            tauri_args: --target x86_64-unknown-linux-gnu
+            artifact_dir: app/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage
+            artifact_glob: "*.AppImage"
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
     steps:
@@ -22,7 +44,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+          targets: ${{ matrix.rust_targets }}
 
       - name: Cache Cargo registry + target
         uses: actions/cache@v4
@@ -35,6 +57,21 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
+      # Linux Tauri/AppImage build dependencies — webkit2gtk for the WebView,
+      # plus build tools for native bundling. Tauri v2 on Linux still uses
+      # webkit2gtk-4.1 from the system.
+      - name: Install Linux build deps
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            file
+
       - name: Install web deps and build SPA
         run: |
           npm ci
@@ -45,41 +82,77 @@ jobs:
           cd app
           npm ci
 
+      # macOS-only: bundle "실행방법.txt" inside the DMG using create-dmg /
+      # hdiutil. Skipped on Windows + Linux (NSIS / AppImage installers
+      # surface install instructions through their own UI).
       - name: Install create-dmg
+        if: matrix.platform == 'macos'
         run: brew install create-dmg
 
-      - name: Build universal DMG
+      - name: Build Tauri bundle
         run: |
           cd app
-          npx tauri build --target universal-apple-darwin
+          npx tauri build ${{ matrix.tauri_args }}
 
-      - name: Locate DMG
-        id: dmg
-        run: |
-          DMG=$(find app/src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" | head -1)
-          echo "path=$DMG" >> "$GITHUB_OUTPUT"
-          echo "name=$(basename "$DMG")" >> "$GITHUB_OUTPUT"
-
-      - name: Inject 실행방법.txt into DMG
+      - name: Locate primary artifact
+        id: artifact
+        shell: bash
         run: |
           set -e
-          DMG="${{ steps.dmg.outputs.path }}"
+          FILE=$(find "${{ matrix.artifact_dir }}" -maxdepth 1 -type f -name "${{ matrix.artifact_glob }}" | head -1)
+          if [ -z "$FILE" ]; then
+            echo "No artifact found in ${{ matrix.artifact_dir }} matching ${{ matrix.artifact_glob }}" >&2
+            ls -R "${{ matrix.artifact_dir }}" || true
+            exit 1
+          fi
+          echo "path=$FILE" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$FILE")" >> "$GITHUB_OUTPUT"
+
+      - name: Inject 실행방법.txt into DMG
+        if: matrix.platform == 'macos'
+        run: |
+          set -e
+          DMG="${{ steps.artifact.outputs.path }}"
           RW_DMG="${DMG%.dmg}-rw.dmg"
           MOUNT="/tmp/dmg-mount-$$"
-          # Convert read-only DMG to read-write so we can add files
           hdiutil convert "$DMG" -format UDRW -o "$RW_DMG"
-          # Mount it
           mkdir -p "$MOUNT"
           hdiutil attach -nobrowse -mountpoint "$MOUNT" "$RW_DMG"
-          # Copy in the install instructions; this puts the .txt next to the
-          # .app icon when the user mounts the DMG in Finder.
           cp app/dmg-resources/실행방법.txt "$MOUNT/실행방법.txt"
-          # Detach
           hdiutil detach "$MOUNT"
-          # Convert back to compressed read-only, replacing the original
           rm -f "$DMG"
           hdiutil convert "$RW_DMG" -format UDZO -o "$DMG"
           rm -f "$RW_DMG"
+
+      - name: Extract version from tag
+        id: version
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF##*/}"
+          VERSION="${TAG%-desktop}"
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Desktop ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: ${{ steps.artifact.outputs.path }}
+
+  manifest:
+    name: Update desktop-latest.json
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Extract version from tag
         id: version
@@ -90,47 +163,55 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub Release with DMG
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: Desktop ${{ steps.version.outputs.version }}
-          generate_release_notes: true
-          files: ${{ steps.dmg.outputs.path }}
-
-      - name: Update desktop-latest.json
+      # Query the ACTUAL uploaded asset names — GitHub strips non-ASCII chars
+      # from upload filenames, so the local "이코네Zip_*.dmg" becomes
+      # "Zip_*.dmg" on the public asset URL. We pull the names per-platform
+      # by file extension and surface our own-domain URL for each.
+      - name: Build per-platform downloads
+        id: downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # Query the ACTUAL uploaded asset name — GitHub strips non-ASCII chars
-          # at upload time, so the local DMG filename (e.g. "이코네Zip_*.dmg")
-          # differs from the public asset name (e.g. "Zip_*.dmg").
-          ASSET_NAME=$(gh release view "${{ steps.version.outputs.tag }}" --json assets --jq '[.assets[] | select(.name | endswith(".dmg"))][0].name')
-          # Manifest URL points at our own domain — the DMG is mirrored into the
-          # Coolify nginx image at build time (see Dockerfile). GitHub Releases
-          # remains the source-of-truth archive for the Dockerfile to fetch from.
-          DOWNLOAD_URL="https://zip.1kko.com/desktop/$ASSET_NAME"
+          set -e
+          MAC=$(gh release view "${{ steps.version.outputs.tag }}" --json assets --jq '[.assets[] | select(.name | endswith(".dmg"))][0].name')
+          WIN=$(gh release view "${{ steps.version.outputs.tag }}" --json assets --jq '[.assets[] | select(.name | endswith("-setup.exe"))][0].name')
+          LIN=$(gh release view "${{ steps.version.outputs.tag }}" --json assets --jq '[.assets[] | select(.name | endswith(".AppImage"))][0].name')
+          echo "mac=$MAC" >> "$GITHUB_OUTPUT"
+          echo "win=$WIN" >> "$GITHUB_OUTPUT"
+          echo "lin=$LIN" >> "$GITHUB_OUTPUT"
+
+      - name: Write manifest
+        run: |
           NOTES=$(gh release view "${{ steps.version.outputs.tag }}" --json body --jq '.body // "" | .[0:280]')
+          BASE="https://zip.1kko.com/desktop"
           jq -n \
             --arg version "${{ steps.version.outputs.version }}" \
-            --arg url "$DOWNLOAD_URL" \
             --arg notes "$NOTES" \
             --arg releasedAt "$(date -u +%Y-%m-%d)" \
-            '{version: $version, downloadUrl: $url, notes: $notes, releasedAt: $releasedAt}' \
-            > public/desktop-latest.json
+            --arg macos "$BASE/${{ steps.downloads.outputs.mac }}" \
+            --arg windows "$BASE/${{ steps.downloads.outputs.win }}" \
+            --arg linux "$BASE/${{ steps.downloads.outputs.lin }}" \
+            '{
+              version: $version,
+              releasedAt: $releasedAt,
+              notes: $notes,
+              downloads: {
+                macos: $macos,
+                windows: $windows,
+                linux: $linux
+              }
+            }' > public/desktop-latest.json
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Commit and push desktop-latest.json to main
+      - name: Commit and push manifest
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # actions/checkout left us in detached-HEAD on the tag SHA — create
-          # a local main tracking the remote so we can commit + push.
-          git fetch origin main
           MANIFEST=$(cat public/desktop-latest.json)
           git checkout -B main origin/main
           printf '%s' "$MANIFEST" > public/desktop-latest.json
           git add public/desktop-latest.json
-          # Retry-on-race in case another commit landed during the build.
           for attempt in 1 2 3; do
             git commit -m "Update desktop-latest.json for ${{ steps.version.outputs.tag }}" || true
             if git push origin main; then break; fi

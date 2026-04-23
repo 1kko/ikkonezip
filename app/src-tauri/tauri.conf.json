@@ -31,15 +31,17 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg"],
+    "targets": ["dmg", "nsis", "appimage", "deb"],
     "category": "Utility",
     "shortDescription": "한글 파일명 정규화 & 압축",
     "longDescription": "맥에서 만든 파일의 한글 파일명을 윈도우 호환 형식으로 변환하여 압축합니다 (NFD→NFC).",
     "icon": [
       "icons/32x32.png",
+      "icons/64x64.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
-      "icons/icon.icns"
+      "icons/icon.icns",
+      "icons/icon.ico"
     ],
     "fileAssociations": [
       {
