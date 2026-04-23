@@ -65,4 +65,34 @@ describe('checkForUpdate', () => {
     );
     expect(await checkForUpdate('1.0.0')).toBeNull();
   });
+
+  it('uses the multi-platform downloads object when present', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({
+        version: '1.2.0',
+        downloads: {
+          macos: 'https://example.com/mac.dmg',
+          windows: 'https://example.com/win.exe',
+          linux: 'https://example.com/lin.AppImage',
+        },
+        notes: 'multi',
+        releasedAt: '2026-04-23',
+      }))
+    );
+    const result = await checkForUpdate('1.1.0');
+    expect(result).not.toBeNull();
+    // process.platform in the test runner is some unix flavor; either way
+    // the helper must surface SOME populated link rather than empty string.
+    expect(result?.downloadUrl).not.toBe('');
+  });
+
+  it('returns null when neither downloadUrl nor downloads has a usable link', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({
+        version: '1.2.0',
+        downloads: { macos: '', windows: '', linux: '' },
+      }))
+    );
+    expect(await checkForUpdate('1.0.0')).toBeNull();
+  });
 });
