@@ -213,7 +213,7 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
         </div>
       )}
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="gap-1.5">
               <FileText className="w-3 h-3" />
@@ -236,42 +236,44 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
             className="hidden"
             onChange={handleFilePicked}
           />
-          {onAddFiles && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleAddClick}
-              className="gap-1.5"
-            >
-              <Plus className="h-4 w-4" />
-              파일 추가
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRemoveSelected}
-            disabled={selectedIds.size === 0}
-            className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
-          >
-            <Trash2 className="w-4 h-4" />
-            선택 삭제
-            {selectedIds.size > 0 && (
-              <span className="ml-0.5 text-xs">({selectedIds.size})</span>
+          <div className="flex items-center gap-2 ml-auto">
+            {onAddFiles && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddClick}
+                className="gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                파일 추가
+              </Button>
             )}
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRemoveSelected}
+              disabled={selectedIds.size === 0}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
+            >
+              <Trash2 className="w-4 h-4" />
+              선택 삭제
+              {selectedIds.size > 0 && (
+                <span className="ml-0.5 text-xs">({selectedIds.size})</span>
+              )}
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         {showSearch && (
-          <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <FileListSearch value={searchQuery} onChange={setSearchQuery} />
+          <div className="flex items-center justify-end gap-3 px-4 py-3">
             {normalizedQuery.length > 0 && (
               <Badge variant="secondary">
                 검색 활성: {visibleFiles.length}개 표시
               </Badge>
             )}
+            <FileListSearch value={searchQuery} onChange={setSearchQuery} />
           </div>
         )}
         {/* Header row + resize handles */}

@@ -51,15 +51,16 @@ export function FileListRow({
           />
         )}
       </div>
-      <span className="text-xs text-muted-foreground font-mono text-right">
-        {formatFileSize(file.size)}
-      </span>
-      <span
-        className="text-xs text-muted-foreground truncate font-mono"
-        title={folderPath}
-      >
-        {folderPath || '—'}
-      </span>
+      <div className="min-w-0 text-right">
+        <span className="text-xs text-muted-foreground font-mono">
+          {formatFileSize(file.size)}
+        </span>
+      </div>
+      <div className="min-w-0" title={folderPath}>
+        <span className="block text-xs text-muted-foreground truncate font-mono">
+          {folderPath || '—'}
+        </span>
+      </div>
     </div>
   );
 }

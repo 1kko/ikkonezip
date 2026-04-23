@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import { AlertCircle, Zap } from 'lucide-react';
+import { AlertCircle, Maximize2, Minimize2, Zap } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { FileUploader } from '@/components/FileUploader';
 import { FileList } from '@/components/FileList';
@@ -37,7 +37,9 @@ function App() {
     cancelZipPassword,
   } = useFileProcessor();
 
-  const { settings } = useSettings();
+  const { settings, updateSetting } = useSettings();
+  const fullWidth = settings.fullWidth;
+  const showChrome = !isTauri() && !fullWidth;
 
   const [desktopUpdate, setDesktopUpdate] = useState<UpdateManifest | null>(null);
 
@@ -138,8 +140,26 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
-      <div className="container mx-auto px-4 py-12 max-w-3xl">
-        {!isTauri() && <Header />}
+      {!isTauri() && (
+        <button
+          type="button"
+          onClick={() => updateSetting('fullWidth', !fullWidth)}
+          aria-label={fullWidth ? '기본 너비로 보기' : '꽉차게 보기'}
+          aria-pressed={fullWidth}
+          title={fullWidth ? '기본 너비로 보기' : '꽉차게 보기'}
+          className="fixed top-4 right-4 z-20 inline-flex items-center justify-center w-9 h-9 rounded-full border bg-background/80 text-muted-foreground hover:text-foreground hover:bg-accent backdrop-blur transition-colors shadow-sm"
+        >
+          {fullWidth ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+        </button>
+      )}
+      <div
+        className={
+          fullWidth
+            ? 'container mx-auto px-4 py-4 max-w-none'
+            : 'container mx-auto px-4 py-12 max-w-3xl'
+        }
+      >
+        {showChrome && <Header />}
 
         <main className="space-y-6">
           {/* Upload section */}
@@ -219,7 +239,7 @@ function App() {
         />
 
         {/* Footer */}
-        {!isTauri() && (
+        {showChrome && (
           <footer className="mt-16 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary text-sm text-secondary-foreground">
               <Zap className="w-4 h-4 text-primary" />
