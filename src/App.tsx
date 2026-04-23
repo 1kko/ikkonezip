@@ -29,7 +29,6 @@ function App() {
     progress,
     addFiles,
     removeFiles,
-    reorderFiles,
     renameFile,
     clearFiles,
     downloadAsZip,
@@ -177,7 +176,6 @@ function App() {
             files={files}
             onRemoveFiles={removeFiles}
             onRename={renameFile}
-            onReorder={reorderFiles}
             onAddFiles={addFiles}
           />
 

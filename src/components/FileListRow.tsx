@@ -1,76 +1,64 @@
-import { Badge } from '@/components/ui/badge';
+import type { CSSProperties } from 'react';
 import type { ProcessedFile } from '@/hooks/useFileProcessor';
 import { FileListRowFilename } from './FileListRowFilename';
 import { FileListRowMeta } from './FileListRowMeta';
 import { formatFileSize } from '@/utils/formatFileSize';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { DragHandle } from './DragHandle';
-import type React from 'react';
 
 interface FileListRowProps {
   file: ProcessedFile;
   selected: boolean;
   onToggleSelect: (id: string) => void;
   onRename: (id: string, newName: string) => void;
+  /** Grid template passed from the parent so rows align with the header. */
+  gridTemplateColumns: string;
 }
 
-export function FileListRow({ file, selected, onToggleSelect, onRename }: FileListRowProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: file.id });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : undefined,
-  };
-
+export function FileListRow({
+  file,
+  selected,
+  onToggleSelect,
+  onRename,
+  gridTemplateColumns,
+}: FileListRowProps) {
   const lastSlash = file.normalizedPath.lastIndexOf('/');
   const folderPath = lastSlash >= 0 ? file.normalizedPath.slice(0, lastSlash) : '';
 
+  const style: CSSProperties = { gridTemplateColumns };
+
   return (
     <div
-      ref={setNodeRef}
       style={style}
-      className="group flex items-center gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
+      className="group grid items-center gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-accent/50 transition-colors cursor-pointer"
       title={file.path}
       onClick={() => onToggleSelect(file.id)}
     >
-      <DragHandle
-        {...attributes}
-        {...listeners}
-        onClick={(e) => e.stopPropagation()}
-      />
       <input
         type="checkbox"
+        aria-label={`${file.normalizedName} 선택`}
         checked={selected}
         onChange={() => onToggleSelect(file.id)}
         onClick={(e) => e.stopPropagation()}
         className="flex-shrink-0 w-3.5 h-3.5 rounded border-input accent-primary cursor-pointer"
       />
-      <FileListRowMeta file={file} />
-      <FileListRowFilename file={file} onRename={onRename} />
-      {folderPath && (
-        <span
-          className="hidden sm:inline flex-shrink min-w-0 max-w-[40%] text-xs text-muted-foreground truncate font-mono"
-          title={folderPath}
-        >
-          {folderPath}
-        </span>
-      )}
-      {file.needsNormalization && (
-        <Badge variant="warning" className="flex-shrink-0 text-[10px] px-1.5 py-0">
-          NFD
-        </Badge>
-      )}
-      <span className="flex-shrink-0 text-xs text-muted-foreground font-mono">
+      <div className="flex items-center gap-2 min-w-0">
+        <FileListRowMeta file={file} />
+        <FileListRowFilename file={file} onRename={onRename} />
+        {file.needsNormalization && (
+          <span
+            aria-label="NFD (정규화 필요)"
+            title="NFD (정규화 필요)"
+            className="flex-shrink-0 w-2 h-2 rounded-full bg-amber-500"
+          />
+        )}
+      </div>
+      <span className="text-xs text-muted-foreground font-mono text-right">
         {formatFileSize(file.size)}
+      </span>
+      <span
+        className="text-xs text-muted-foreground truncate font-mono"
+        title={folderPath}
+      >
+        {folderPath || '—'}
       </span>
     </div>
   );

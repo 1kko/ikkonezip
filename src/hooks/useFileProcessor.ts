@@ -24,7 +24,6 @@ export interface UseFileProcessorReturn {
   addFiles: (fileList: FileList | File[]) => Promise<void>;
   removeFile: (id: string) => void;
   removeFiles: (ids: string[]) => void;
-  reorderFiles: (fromId: string, toId: string) => void;
   renameFile: (id: string, newName: string) => void;
   clearFiles: () => void;
   downloadAsZip: (zipFilename?: string, options?: ZipOptions) => Promise<void>;
@@ -192,19 +191,6 @@ export function useFileProcessor(): UseFileProcessorReturn {
     setFiles(prev => prev.filter(f => !idSet.has(f.id)));
   }, []);
 
-  const reorderFiles = useCallback((fromId: string, toId: string) => {
-    if (fromId === toId) return;
-    setFiles((prev) => {
-      const fromIdx = prev.findIndex((f) => f.id === fromId);
-      const toIdx = prev.findIndex((f) => f.id === toId);
-      if (fromIdx < 0 || toIdx < 0) return prev;
-      const next = prev.slice();
-      const [moved] = next.splice(fromIdx, 1);
-      next.splice(toIdx, 0, moved);
-      return next;
-    });
-  }, []);
-
   const renameFile = useCallback((id: string, newName: string) => {
     // Strip path separators (forward + backslash) and null bytes — defense
     // against path-injection in case the rename ever flows to a server path.
@@ -298,7 +284,6 @@ export function useFileProcessor(): UseFileProcessorReturn {
     addFiles,
     removeFile,
     removeFiles,
-    reorderFiles,
     renameFile,
     clearFiles,
     downloadAsZip,
