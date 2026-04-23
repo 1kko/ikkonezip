@@ -24,8 +24,10 @@ export interface UseFileProcessorReturn {
   addFiles: (fileList: FileList | File[]) => Promise<void>;
   removeFile: (id: string) => void;
   removeFiles: (ids: string[]) => void;
+  removeFolderByPath: (folderPath: string) => void;
   reorderFiles: (fromId: string, toId: string) => void;
   renameFile: (id: string, newName: string) => void;
+  renameFolder: (folderPath: string, newName: string) => void;
   clearFiles: () => void;
   downloadAsZip: (zipFilename?: string, options?: ZipOptions) => Promise<void>;
   downloadSingle: () => void;
@@ -229,6 +231,34 @@ export function useFileProcessor(): UseFileProcessorReturn {
     );
   }, []);
 
+  const renameFolder = useCallback((folderPath: string, newName: string) => {
+    // eslint-disable-next-line no-control-regex
+    const sanitized = newName.replace(/[/\\\x00]/g, '').trim();
+    if (sanitized.length === 0 || folderPath.length === 0) return;
+
+    const lastSlash = folderPath.lastIndexOf('/');
+    const parentPrefix = lastSlash >= 0 ? folderPath.slice(0, lastSlash + 1) : '';
+    const newFolderPath = parentPrefix + sanitized;
+    if (newFolderPath === folderPath) return;
+    const prefix = folderPath + '/';
+
+    setFiles((prev) =>
+      prev.map((f) =>
+        f.normalizedPath.startsWith(prefix)
+          ? { ...f, normalizedPath: newFolderPath + '/' + f.normalizedPath.slice(prefix.length) }
+          : f
+      )
+    );
+  }, []);
+
+  const removeFolderByPath = useCallback((folderPath: string) => {
+    if (folderPath.length === 0) return;
+    const prefix = folderPath + '/';
+    setFiles((prev) =>
+      prev.filter((f) => f.normalizedPath !== folderPath && !f.normalizedPath.startsWith(prefix))
+    );
+  }, []);
+
   const clearFiles = useCallback(() => {
     setFiles([]);
     setError(null);
@@ -298,8 +328,10 @@ export function useFileProcessor(): UseFileProcessorReturn {
     addFiles,
     removeFile,
     removeFiles,
+    removeFolderByPath,
     reorderFiles,
     renameFile,
+    renameFolder,
     clearFiles,
     downloadAsZip,
     downloadSingle,

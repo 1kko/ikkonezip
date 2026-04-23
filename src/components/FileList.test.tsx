@@ -168,6 +168,94 @@ describe('FileList — search/filter at ≥50 files', () => {
   });
 });
 
+describe('FileList — folder tree mode', () => {
+  function folderFile(id: string, path: string): ProcessedFile {
+    const name = path.split('/').pop()!;
+    return {
+      id,
+      file: new File(['x'], name, { type: 'text/plain' }),
+      originalName: name,
+      normalizedName: name,
+      path,
+      normalizedPath: path,
+      needsNormalization: false,
+      size: 100,
+    };
+  }
+
+  it('renders folder rows with file counts when files contain slashes', () => {
+    const files = [
+      folderFile('1', 'root/a.txt'),
+      folderFile('2', 'root/b.txt'),
+      folderFile('3', 'other.txt'),
+    ];
+    render(
+      <FileList
+        files={files}
+        onRemoveFiles={vi.fn()}
+        onRename={vi.fn()}
+        onReorder={vi.fn()}
+        onRenameFolder={vi.fn()}
+        onRemoveFolder={vi.fn()}
+      />
+    );
+    expect(screen.getByText('root')).toBeInTheDocument();
+    // Folder badge shows 2개
+    expect(screen.getByText('2개')).toBeInTheDocument();
+    // Root-level loose file still rendered
+    expect(screen.getByText('other.txt')).toBeInTheDocument();
+  });
+
+  it('calls onRemoveFolder when the folder delete button is clicked', () => {
+    const onRemoveFolder = vi.fn();
+    render(
+      <FileList
+        files={[folderFile('1', 'root/a.txt'), folderFile('2', 'root/b.txt')]}
+        onRemoveFiles={vi.fn()}
+        onRename={vi.fn()}
+        onReorder={vi.fn()}
+        onRenameFolder={vi.fn()}
+        onRemoveFolder={onRemoveFolder}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'root 폴더 삭제' }));
+    expect(onRemoveFolder).toHaveBeenCalledWith('root');
+  });
+
+  it('folder checkbox selects every descendant', () => {
+    const onRemoveFiles = vi.fn();
+    render(
+      <FileList
+        files={[folderFile('1', 'root/a.txt'), folderFile('2', 'root/b.txt')]}
+        onRemoveFiles={onRemoveFiles}
+        onRename={vi.fn()}
+        onReorder={vi.fn()}
+        onRenameFolder={vi.fn()}
+        onRemoveFolder={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('checkbox', { name: 'root 전체 선택' }));
+    fireEvent.click(screen.getByRole('button', { name: /선택 삭제/ }));
+    expect(onRemoveFiles).toHaveBeenCalledWith(expect.arrayContaining(['1', '2']));
+  });
+
+  it('collapses a folder and hides its descendant file rows', () => {
+    render(
+      <FileList
+        files={[folderFile('1', 'root/a.txt'), folderFile('2', 'root/b.txt')]}
+        onRemoveFiles={vi.fn()}
+        onRename={vi.fn()}
+        onReorder={vi.fn()}
+        onRenameFolder={vi.fn()}
+        onRemoveFolder={vi.fn()}
+      />
+    );
+    expect(screen.getByText('a.txt')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '폴더 접기' }));
+    expect(screen.queryByText('a.txt')).not.toBeInTheDocument();
+  });
+});
+
 describe('FileList — add files (Phase 4)', () => {
   function makeFile(name: string): ProcessedFile {
     return {
