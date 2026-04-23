@@ -197,6 +197,7 @@ function App() {
             onRemoveFiles={removeFiles}
             onRename={renameFile}
             onAddFiles={addFiles}
+            onClearFiles={clearFiles}
           />
 
           {/* Download section */}
@@ -209,18 +210,6 @@ function App() {
             onDownloadSingle={downloadSingle}
           />
 
-          {/* Reset link */}
-          {files.length > 0 && (
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={clearFiles}
-                className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
-              >
-                초기화
-              </button>
-            </div>
-          )}
         </main>
 
         <PreviewModal

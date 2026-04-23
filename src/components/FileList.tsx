@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect, type DragEvent, type PointerEvent } from 'react';
-import { FileText, Trash2, AlertTriangle, Plus, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { FileText, Trash2, AlertTriangle, Plus, ChevronUp, ChevronDown, ChevronsUpDown, RotateCcw } from 'lucide-react';
 import type { ProcessedFile } from '@/hooks/useFileProcessor';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,8 @@ interface FileListProps {
   onRename: (id: string, newName: string) => void;
   /** When provided, the file list area becomes a drop target and a "파일 추가" button appears. */
   onAddFiles?: (files: FileList | File[]) => void;
+  /** Clears all files and error state — surfaced as the "새로 압축" button. */
+  onClearFiles?: () => void;
 }
 
 type SortKey = 'name' | 'size' | 'path';
@@ -58,7 +60,7 @@ function compareFiles(a: ProcessedFile, b: ProcessedFile, key: SortKey): number 
   }
 }
 
-export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileListProps) {
+export function FileList({ files, onRemoveFiles, onRename, onAddFiles, onClearFiles }: FileListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [sort, setSort] = useState<SortState | null>(null);
@@ -295,6 +297,18 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
+            {onClearFiles && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onClearFiles}
+                className="gap-1.5"
+              >
+                <RotateCcw className="w-4 h-4" />
+                새로 압축
+              </Button>
+            )}
             <Badge variant="outline" className="gap-1.5">
               <FileText className="w-3 h-3" />
               {files.length}개 파일
@@ -356,49 +370,51 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles }: FileLis
             <FileListSearch value={searchQuery} onChange={setSearchQuery} />
           </div>
         )}
-        {/* Header row + resize handles */}
-        <div
-          ref={tableRef}
-          role="row"
-          style={{ gridTemplateColumns }}
-          className="grid items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground select-none"
-        >
-          <input
-            type="checkbox"
-            aria-label="전체 선택"
-            checked={allVisibleSelected}
-            onChange={toggleSelectAll}
-            className="w-3.5 h-3.5 rounded border-input accent-primary cursor-pointer"
-          />
-          <HeaderCell
-            label="이름"
-            active={sort?.key === 'name'}
-            direction={sort?.key === 'name' ? sort.direction : null}
-            onClick={() => toggleSort('name')}
-            onResize={startResize('name')}
-            onResizeMove={handleResizeMove}
-            onResizeEnd={endResize}
-          />
-          <HeaderCell
-            label="크기"
-            active={sort?.key === 'size'}
-            direction={sort?.key === 'size' ? sort.direction : null}
-            onClick={() => toggleSort('size')}
-            align="right"
-            onResize={startResize('size')}
-            onResizeMove={handleResizeMove}
-            onResizeEnd={endResize}
-          />
-          <HeaderCell
-            label="경로"
-            active={sort?.key === 'path'}
-            direction={sort?.key === 'path' ? sort.direction : null}
-            onClick={() => toggleSort('path')}
-            isLast
-          />
-        </div>
-        <ScrollArea className="max-h-72 overflow-y-auto overflow-x-hidden custom-scrollbar pr-3">
-          <div className="space-y-2">
+        <ScrollArea className="max-h-80 overflow-y-auto overflow-x-hidden custom-scrollbar">
+          {/* Header row lives inside the same scroll container as the rows so
+              both share identical content width — prevents the last column
+              from spilling when the scrollbar gutter differs. */}
+          <div
+            ref={tableRef}
+            role="row"
+            style={{ gridTemplateColumns }}
+            className="sticky top-0 z-10 bg-card grid items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground select-none border-b"
+          >
+            <input
+              type="checkbox"
+              aria-label="전체 선택"
+              checked={allVisibleSelected}
+              onChange={toggleSelectAll}
+              className="w-3.5 h-3.5 rounded border-input accent-primary cursor-pointer"
+            />
+            <HeaderCell
+              label="이름"
+              active={sort?.key === 'name'}
+              direction={sort?.key === 'name' ? sort.direction : null}
+              onClick={() => toggleSort('name')}
+              onResize={startResize('name')}
+              onResizeMove={handleResizeMove}
+              onResizeEnd={endResize}
+            />
+            <HeaderCell
+              label="크기"
+              active={sort?.key === 'size'}
+              direction={sort?.key === 'size' ? sort.direction : null}
+              onClick={() => toggleSort('size')}
+              align="right"
+              onResize={startResize('size')}
+              onResizeMove={handleResizeMove}
+              onResizeEnd={endResize}
+            />
+            <HeaderCell
+              label="경로"
+              active={sort?.key === 'path'}
+              direction={sort?.key === 'path' ? sort.direction : null}
+              onClick={() => toggleSort('path')}
+              isLast
+            />
+          </div>
+          <div className="space-y-2 pt-2">
             {visibleFiles.map((file) => (
               <FileListRow
                 key={file.id}
