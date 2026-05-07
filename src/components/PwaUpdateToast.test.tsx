@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { PwaUpdateToast } from './PwaUpdateToast';
@@ -13,10 +13,19 @@ import { useRegisterSW } from 'virtual:pwa-register/react';
 describe('PwaUpdateToast', () => {
   let updateMock: ReturnType<typeof vi.fn>;
   let setNeedRefreshMock: ReturnType<typeof vi.fn>;
+  let cachesKeysMock: ReturnType<typeof vi.fn>;
+  let cachesDeleteMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     updateMock = vi.fn().mockResolvedValue(undefined);
     setNeedRefreshMock = vi.fn();
+    cachesKeysMock = vi.fn().mockResolvedValue(['workbox-precache-v1', 'google-fonts-cache']);
+    cachesDeleteMock = vi.fn().mockResolvedValue(true);
+    vi.stubGlobal('caches', { keys: cachesKeysMock, delete: cachesDeleteMock });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   function mockHook(needRefresh: boolean) {
@@ -41,11 +50,20 @@ describe('PwaUpdateToast', () => {
     expect(screen.getByRole('button', { name: '새로고침' })).toBeInTheDocument();
   });
 
-  it('calls updateServiceWorker(true) when the refresh button is clicked', () => {
+  it('sends SKIP_WAITING (reloadPage=false) and purges cache buckets when the refresh button is clicked', async () => {
     mockHook(true);
     render(<PwaUpdateToast />);
     fireEvent.click(screen.getByRole('button', { name: '새로고침' }));
-    expect(updateMock).toHaveBeenCalledWith(true);
+    // reloadPage=false: defer reload to the controllerchange listener so we
+    // don't race the SW activation.
+    expect(updateMock).toHaveBeenCalledWith(false);
+    // Wait one microtask cycle for the async onClick body to flush through
+    // updateServiceWorker → purgeCaches.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(cachesKeysMock).toHaveBeenCalled();
+    expect(cachesDeleteMock).toHaveBeenCalledWith('workbox-precache-v1');
+    expect(cachesDeleteMock).toHaveBeenCalledWith('google-fonts-cache');
   });
 
   it('calls setNeedRefresh(false) when the close button is clicked', () => {

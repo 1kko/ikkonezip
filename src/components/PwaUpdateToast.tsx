@@ -1,12 +1,45 @@
+import { useRef } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+// Wipe every Cache Storage entry the workbox SW owns. Catches stale precache
+// buckets that cleanupOutdatedCaches misses when the new SW is still waiting.
+async function purgeCaches() {
+  if (typeof caches === 'undefined') return;
+  try {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+  } catch {
+    // Cache Storage rejection is non-fatal — reload still happens.
+  }
+}
+
 export function PwaUpdateToast() {
+  // Single-shot guard: controllerchange can fire twice in some browsers when
+  // SW chains transitions (waiting → installing → activating).
+  const reloadingRef = useRef(false);
+
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
-  } = useRegisterSW();
+  } = useRegisterSW({
+    onRegisteredSW(_, registration) {
+      // The default updateServiceWorker(true) flow calls location.reload()
+      // synchronously after postMessage(SKIP_WAITING). On slow machines that
+      // races the SW's actual activation — reload runs against the OLD SW,
+      // which serves the OLD precached HTML/JS. Listening for
+      // controllerchange instead defers reload until the new SW has taken
+      // control, so the next paint comes from the new precache manifest.
+      if (registration && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (reloadingRef.current) return;
+          reloadingRef.current = true;
+          window.location.reload();
+        });
+      }
+    },
+  });
 
   if (!needRefresh) return null;
 
@@ -24,7 +57,24 @@ export function PwaUpdateToast() {
         type="button"
         size="sm"
         onClick={() => {
-          updateServiceWorker(true).catch(() => location.reload());
+          void (async () => {
+            // reloadPage=false: just send SKIP_WAITING. The controllerchange
+            // listener above triggers the reload once the new SW is active.
+            try {
+              await updateServiceWorker(false);
+            } catch {
+              // Hook rejected — fall through to manual purge + reload.
+            }
+            await purgeCaches();
+            // Safety net: if no controllerchange fires within 3s (e.g. no
+            // waiting SW because cache went stale via a different path),
+            // force the reload anyway so the user is never stuck.
+            setTimeout(() => {
+              if (reloadingRef.current) return;
+              reloadingRef.current = true;
+              window.location.reload();
+            }, 3000);
+          })();
         }}
       >
         새로고침
