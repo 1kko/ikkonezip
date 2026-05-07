@@ -9,6 +9,7 @@ interface FileListRowProps {
   selected: boolean;
   onToggleSelect: (id: string) => void;
   onRename: (id: string, newName: string) => void;
+  onPreviewOpen?: (id: string) => void;
   /** Grid template passed from the parent so rows align with the header. */
   gridTemplateColumns: string;
 }
@@ -18,6 +19,7 @@ export function FileListRow({
   selected,
   onToggleSelect,
   onRename,
+  onPreviewOpen,
   gridTemplateColumns,
 }: FileListRowProps) {
   const lastSlash = file.normalizedPath.lastIndexOf('/');
@@ -41,7 +43,7 @@ export function FileListRow({
         className="flex-shrink-0 w-3.5 h-3.5 rounded border-input accent-primary cursor-pointer"
       />
       <div className="flex items-center gap-2 min-w-0">
-        <FileListRowMeta file={file} />
+        <FileListRowMeta file={file} onPreviewOpen={onPreviewOpen} />
         <FileListRowFilename file={file} onRename={onRename} />
         {file.needsNormalization && (
           <span

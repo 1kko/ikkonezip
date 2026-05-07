@@ -60,4 +60,21 @@ describe('useThumbnail', () => {
     renderHook(() => useThumbnail(file));
     expect(createObjectURL).not.toHaveBeenCalled();
   });
+
+  it('returns null and does not call createObjectURL when file is null', () => {
+    const { result } = renderHook(() => useThumbnail(null));
+    expect(result.current).toBeNull();
+    expect(createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('revokes URL when file transitions from image to null', async () => {
+    const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
+    const { rerender } = renderHook(({ f }: { f: File | null }) => useThumbnail(f), {
+      initialProps: { f: file as File | null },
+    });
+    rerender({ f: null });
+    await waitFor(() => {
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    });
+  });
 });

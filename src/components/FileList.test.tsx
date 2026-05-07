@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { FileList } from './FileList';
 import type { ProcessedFile } from '@/hooks/useFileProcessor';
@@ -70,6 +70,45 @@ describe('FileList', () => {
     render(<FileList files={[makeFile({ id: '1' })]} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
     const removeBtn = screen.getByRole('button', { name: /선택 삭제/ });
     expect(removeBtn).toBeDisabled();
+  });
+});
+
+describe('FileList — image preview gallery', () => {
+  beforeEach(() => {
+    URL.createObjectURL = vi.fn().mockReturnValue('blob:mock-url');
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function imageFile(name: string, id: string): ProcessedFile {
+    return {
+      id,
+      file: new File(['x'], name, { type: 'image/jpeg' }),
+      originalName: name,
+      normalizedName: name,
+      path: name,
+      normalizedPath: name,
+      needsNormalization: false,
+      size: 100,
+    };
+  }
+
+  it('opens preview modal when image thumbnail clicked and navigates with ArrowRight', () => {
+    const files = [imageFile('first.jpg', '1'), imageFile('second.jpg', '2')];
+    render(<FileList files={files} onRemoveFiles={vi.fn()} onRename={vi.fn()} />);
+
+    fireEvent.click(screen.getByLabelText('first.jpg 미리보기'));
+
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText('first.jpg')).toBeInTheDocument();
+    expect(within(dialog).getByText('1 / 2')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(within(dialog).getByText('second.jpg')).toBeInTheDocument();
+    expect(within(dialog).getByText('2 / 2')).toBeInTheDocument();
   });
 });
 
