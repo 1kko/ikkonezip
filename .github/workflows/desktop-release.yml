@@ -186,11 +186,15 @@ jobs:
 
       - name: Write manifest
         run: |
-          NOTES=$(gh release view "${{ steps.version.outputs.tag }}" --json body --jq '.body // "" | .[0:280]')
+          # The toast UI surfaces only the version line; release-body markdown
+          # would just leak as raw "**Full Changelog**: …" noise into older
+          # desktop builds whose embedded SPA still renders manifest.notes.
+          # Keep the field for forward-compat (UpdateManifest typing) but ship
+          # it empty.
           BASE="https://zip.1kko.com/desktop"
           jq -n \
             --arg version "${{ steps.version.outputs.version }}" \
-            --arg notes "$NOTES" \
+            --arg notes "" \
             --arg releasedAt "$(date -u +%Y-%m-%d)" \
             --arg macos "$BASE/${{ steps.downloads.outputs.mac }}" \
             --arg windows "$BASE/${{ steps.downloads.outputs.win }}" \
