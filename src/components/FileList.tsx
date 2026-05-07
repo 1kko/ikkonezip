@@ -101,13 +101,11 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles, onClearFi
   );
 
   // Sort/filter changes or file removal can shift the image list out from
-  // under the open preview — close it if the current index no longer maps
-  // to a real entry.
-  useEffect(() => {
-    if (previewIndex !== null && previewIndex >= imageFiles.length) {
-      setPreviewIndex(null);
-    }
-  }, [imageFiles, previewIndex]);
+  // under the open preview. Clamp during render rather than in useEffect so
+  // React skips the extra commit (per "You might not need an Effect").
+  if (previewIndex !== null && previewIndex >= imageFiles.length) {
+    setPreviewIndex(null);
+  }
 
   const toggleSort = useCallback((key: SortKey) => {
     setSort((prev) => {

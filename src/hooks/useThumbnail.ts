@@ -17,7 +17,6 @@ export function useThumbnail(file: File | null): string | null {
     }
 
     const blobUrl = URL.createObjectURL(file);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUrl(blobUrl);
 
     return () => {
