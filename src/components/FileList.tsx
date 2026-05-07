@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FileListRow } from './FileListRow';
 import { FileListSearch } from './FileListSearch';
+import { ImagePreviewModal } from './ImagePreviewModal';
 import { formatFileSize } from '@/utils/formatFileSize';
+import { isImageFile } from '@/utils/isImageFile';
 import { cn } from '@/lib/utils';
 import { extractFilesFromDataTransfer } from '@/utils/extractFilesFromDataTransfer';
 
@@ -65,6 +67,7 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles, onClearFi
   const [searchQuery, setSearchQuery] = useState('');
   const [sort, setSort] = useState<SortState | null>(null);
   const [widths, setWidths] = useState<ColumnWidths>(DEFAULT_WIDTHS);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   const showSearch = files.length >= 50;
   const normalizedQuery = useMemo(
@@ -83,6 +86,26 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles, onClearFi
     const dir = sort.direction === 'asc' ? 1 : -1;
     return [...filteredFiles].sort((a, b) => compareFiles(a, b, sort.key) * dir);
   }, [filteredFiles, sort]);
+
+  const imageFiles = useMemo(
+    () => visibleFiles.filter((f) => isImageFile(f.file)),
+    [visibleFiles]
+  );
+
+  const openPreviewById = useCallback(
+    (id: string) => {
+      const i = imageFiles.findIndex((f) => f.id === id);
+      if (i >= 0) setPreviewIndex(i);
+    },
+    [imageFiles]
+  );
+
+  // Sort/filter changes or file removal can shift the image list out from
+  // under the open preview. Clamp during render rather than in useEffect so
+  // React skips the extra commit (per "You might not need an Effect").
+  if (previewIndex !== null && previewIndex >= imageFiles.length) {
+    setPreviewIndex(null);
+  }
 
   const toggleSort = useCallback((key: SortKey) => {
     setSort((prev) => {
@@ -422,12 +445,19 @@ export function FileList({ files, onRemoveFiles, onRename, onAddFiles, onClearFi
                 selected={selectedIds.has(file.id)}
                 onToggleSelect={toggleSelect}
                 onRename={onRename}
+                onPreviewOpen={openPreviewById}
                 gridTemplateColumns={gridTemplateColumns}
               />
             ))}
           </div>
         </ScrollArea>
       </CardContent>
+      <ImagePreviewModal
+        files={imageFiles}
+        index={previewIndex}
+        onIndexChange={setPreviewIndex}
+        onClose={() => setPreviewIndex(null)}
+      />
     </Card>
   );
 }
