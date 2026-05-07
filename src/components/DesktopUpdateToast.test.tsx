@@ -18,10 +18,12 @@ describe('DesktopUpdateToast', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders the version and notes when manifest is present', () => {
+  it('renders the version when manifest is present', () => {
     render(<DesktopUpdateToast manifest={sample} onDismiss={vi.fn()} onDownload={vi.fn()} />);
     expect(screen.getByText(/새 버전 1\.2\.0 사용 가능/)).toBeInTheDocument();
-    expect(screen.getByText('드래그 정렬 기능 추가')).toBeInTheDocument();
+    // notes는 의도적으로 표시하지 않음 — 릴리즈 body의 raw markdown이 그대로
+    // 흘러드는 걸 막고 토스트를 한 줄짜리 "새 버전 X 사용 가능"으로 유지.
+    expect(screen.queryByText('드래그 정렬 기능 추가')).not.toBeInTheDocument();
   });
 
   it('calls onDownload when the download button is clicked', () => {
