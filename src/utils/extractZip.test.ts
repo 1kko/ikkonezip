@@ -23,6 +23,49 @@ async function buildZip(
   return await blobWriter.getData();
 }
 
+/**
+ * Build a ZIP whose entry filenames are encoded with a custom byte
+ * sequence and whose general purpose bit 11 (UTF-8 flag) is forced off,
+ * mimicking the macOS Finder / Korean Windows tool failure mode.
+ */
+async function buildZipWithRawFilenames(
+  entries: { rawName: Uint8Array; content: string }[],
+): Promise<Blob> {
+  const blobWriter = new BlobWriter('application/zip');
+  const writer = new ZipWriter(blobWriter);
+  for (const entry of entries) {
+    const placeholder = `__placeholder_${Math.random().toString(36).slice(2)}__`;
+    await writer.add(placeholder, new BlobReader(new Blob([entry.content])), {
+      encodeText: (text: string) => (text === placeholder ? entry.rawName : undefined),
+    });
+  }
+  await writer.close();
+  const blob = await blobWriter.getData();
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  return new Blob([clearUtf8FlagInZip(bytes)], { type: 'application/zip' });
+}
+
+/**
+ * Clears bit 11 (UTF-8 flag) in every Local File Header and Central
+ * Directory Header in the zip. Bit 11 lives at LFH offset +6 and CDH
+ * offset +8, in the high byte of a little-endian 16-bit flag.
+ */
+function clearUtf8FlagInZip(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
+  const out = new Uint8Array(new ArrayBuffer(bytes.length));
+  out.set(bytes);
+  for (let i = 0; i < out.length - 4; i++) {
+    // Local File Header signature: 50 4B 03 04
+    if (out[i] === 0x50 && out[i + 1] === 0x4b && out[i + 2] === 0x03 && out[i + 3] === 0x04) {
+      out[i + 7] &= ~0x08;
+    }
+    // Central Directory Header signature: 50 4B 01 02
+    if (out[i] === 0x50 && out[i + 1] === 0x4b && out[i + 2] === 0x01 && out[i + 3] === 0x02) {
+      out[i + 9] &= ~0x08;
+    }
+  }
+  return out;
+}
+
 describe('isZipFile', () => {
   it('detects .zip extension', () => {
     expect(isZipFile(createMockFile('archive.zip'))).toBe(true);
@@ -160,6 +203,36 @@ describe('extractZip', () => {
     expect(results[0].path).toBe('한글/한글파일.txt');
   });
 
+  it('recovers Korean filenames from a macOS Finder-style ZIP (NFD UTF-8, bit11 off)', async () => {
+    const nfdName = '스크린샷.png'.normalize('NFD');
+    const rawName = new TextEncoder().encode(nfdName);
+    const blob = await buildZipWithRawFilenames([
+      { rawName, content: 'png-bytes' },
+    ]);
+    const zipFile = new File([blob], 'mac.zip');
+    const results = await extractZip(zipFile);
+
+    expect(results).toHaveLength(1);
+    // Entry name is decoded as NFD UTF-8 (round-trip clean); the app
+    // normalizes it to NFC downstream in useFileProcessor.
+    expect(results[0].file.name.normalize('NFC')).toBe('스크린샷.png');
+    expect(results[0].path.normalize('NFC')).toBe('mac/스크린샷.png');
+  });
+
+  it('recovers Korean filenames from a Korean Windows-style ZIP (CP949, bit11 off)', async () => {
+    // 한글.txt in CP949: 한 = C7 D1, 글 = B1 DB, .txt = 2E 74 78 74
+    const cp949 = new Uint8Array([0xc7, 0xd1, 0xb1, 0xdb, 0x2e, 0x74, 0x78, 0x74]);
+    const blob = await buildZipWithRawFilenames([
+      { rawName: cp949, content: 'cp949 content' },
+    ]);
+    const zipFile = new File([blob], 'cp949.zip');
+    const results = await extractZip(zipFile);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].file.name).toBe('한글.txt');
+    expect(results[0].path).toBe('cp949/한글.txt');
+  });
+
   it('skips directory entries in ZIP', async () => {
     // Create a ZIP that contains a directory entry + a file
     const blobWriter = new BlobWriter('application/zip');
@@ -187,6 +260,8 @@ describe('extractZip', () => {
     const mockGetEntries = vi.fn().mockResolvedValue([
       {
         filename: 'no-data.txt',
+        rawFilename: new TextEncoder().encode('no-data.txt'),
+        filenameUTF8: true,
         directory: false,
         getData: undefined, // no getData
         uncompressedSize: 100,
@@ -194,6 +269,8 @@ describe('extractZip', () => {
       },
       {
         filename: 'real.txt',
+        rawFilename: new TextEncoder().encode('real.txt'),
+        filenameUTF8: true,
         directory: false,
         getData: vi.fn().mockResolvedValue(new Blob(['real data'])),
         uncompressedSize: 9,
@@ -223,6 +300,8 @@ describe('extractZip', () => {
     const mockGetEntries = vi.fn().mockResolvedValue([
       {
         filename: 'empty.txt',
+        rawFilename: new TextEncoder().encode('empty.txt'),
+        filenameUTF8: true,
         directory: false,
         getData: vi.fn(),
         uncompressedSize: 0, // zero-size
@@ -230,6 +309,8 @@ describe('extractZip', () => {
       },
       {
         filename: 'real.txt',
+        rawFilename: new TextEncoder().encode('real.txt'),
+        filenameUTF8: true,
         directory: false,
         getData: vi.fn().mockResolvedValue(new Blob(['content'])),
         uncompressedSize: 7,
