@@ -7,6 +7,7 @@ use tauri::{Emitter, Manager};
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             // Second-instance launch (e.g., user double-clicks another .zip while app is open).
             // Re-emit any file argv into the existing window.

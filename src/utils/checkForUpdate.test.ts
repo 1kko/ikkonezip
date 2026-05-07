@@ -81,8 +81,9 @@ describe('checkForUpdate', () => {
     );
     const result = await checkForUpdate('1.1.0');
     expect(result).not.toBeNull();
-    // process.platform in the test runner is some unix flavor; either way
-    // the helper must surface SOME populated link rather than empty string.
+    // navigator.platform under happy-dom resolves to a non-empty string,
+    // so detectPlatform() picks one of macos/windows/linux. Whichever it is,
+    // the helper must surface a populated link rather than empty string.
     expect(result?.downloadUrl).not.toBe('');
   });
 
