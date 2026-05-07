@@ -9,6 +9,14 @@
     {
       "identifier": "http:default",
       "allow": [{ "url": "https://zip.1kko.com/*" }]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [{ "path": "$DOWNLOAD/Zip_*" }]
+    },
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [{ "path": "$DOWNLOAD" }]
     }
   ]
 }

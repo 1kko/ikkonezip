@@ -45,4 +45,18 @@ describe('DesktopUpdateToast', () => {
     const toast = screen.getByRole('status');
     expect(toast).toHaveAttribute('aria-live', 'polite');
   });
+
+  it('shows the loading label and disables both buttons while isDownloading', () => {
+    render(
+      <DesktopUpdateToast
+        manifest={sample}
+        onDismiss={vi.fn()}
+        onDownload={vi.fn()}
+        isDownloading
+      />
+    );
+    const dl = screen.getByRole('button', { name: /다운로드 중/ });
+    expect(dl).toBeDisabled();
+    expect(screen.getByRole('button', { name: '닫기' })).toBeDisabled();
+  });
 });

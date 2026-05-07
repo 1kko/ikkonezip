@@ -42,6 +42,7 @@ function App() {
   const showChrome = !isTauri() && !fullWidth;
 
   const [desktopUpdate, setDesktopUpdate] = useState<UpdateManifest | null>(null);
+  const [isDownloadingUpdate, setIsDownloadingUpdate] = useState(false);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -244,18 +245,49 @@ function App() {
       <PwaUpdateToast />
       <DesktopUpdateToast
         manifest={desktopUpdate}
+        isDownloading={isDownloadingUpdate}
         onDownload={() => {
-          if (!desktopUpdate) return;
+          if (!desktopUpdate || isDownloadingUpdate) return;
           void (async () => {
+            const url = desktopUpdate.downloadUrl;
+            const fileName = url.substring(url.lastIndexOf('/') + 1);
+            setIsDownloadingUpdate(true);
             try {
-              const { open } = await import('@tauri-apps/plugin-shell');
-              await open(desktopUpdate.downloadUrl);
+              // Stream the installer through the Tauri HTTP plugin (CORS-free)
+              // and write to ~/Downloads via the FS plugin, then hand off to
+              // the OS handler — DiskImageMounter on macOS, the NSIS installer
+              // on Windows, the AppImage runner on Linux.
+              const [{ fetch: tauriFetch }, fs, shell, path] = await Promise.all([
+                import('@tauri-apps/plugin-http'),
+                import('@tauri-apps/plugin-fs'),
+                import('@tauri-apps/plugin-shell'),
+                import('@tauri-apps/api/path'),
+              ]);
+              const r = await tauriFetch(url);
+              if (!r.ok) throw new Error(`HTTP ${r.status}`);
+              const bytes = new Uint8Array(await r.arrayBuffer());
+              await fs.writeFile(fileName, bytes, { baseDir: fs.BaseDirectory.Download });
+              const absolutePath = await path.join(await path.downloadDir(), fileName);
+              await shell.open(absolutePath);
+              setDesktopUpdate(null);
             } catch (err) {
-              console.error('Failed to open download URL', err);
+              console.warn('[update download] in-app failed, falling back to browser:', err);
+              try {
+                const { open } = await import('@tauri-apps/plugin-shell');
+                await open(url);
+                setDesktopUpdate(null);
+              } catch (openErr) {
+                console.error('Fallback browser open also failed', openErr);
+              }
+            } finally {
+              setIsDownloadingUpdate(false);
             }
           })();
         }}
-        onDismiss={() => setDesktopUpdate(null)}
+        onDismiss={() => {
+          if (isDownloadingUpdate) return;
+          setDesktopUpdate(null);
+        }}
       />
     </div>
   );
