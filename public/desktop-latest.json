@@ -1,10 +1,10 @@
 {
-  "version": "0.5.1",
+  "version": "0.5.2",
   "releasedAt": "2026-05-07",
-  "notes": "## What's Changed\n* Fix DMG download URL in desktop-release manifest by @1kko in https://github.com/1kko/ikkonezip/pull/59\n* Self-host desktop DMG via Dockerfile build-time fetch by @1kko in https://github.com/1kko/ikkonezip/pull/60\n* Authenticate Dockerfile DMG fetch (private re",
+  "notes": "## What's Changed\n* desktop-release: grant actions:write so deploy trigger works by @1kko in https://github.com/1kko/ikkonezip/pull/72\n* Enlarge image thumbnails and add gallery navigation in preview modal by @1kko in https://github.com/1kko/ikkonezip/pull/73\n\n\n**Full Changelog**",
   "downloads": {
-    "macos": "https://zip.1kko.com/desktop/Zip_0.5.1_universal.dmg",
-    "windows": "https://zip.1kko.com/desktop/Zip_0.5.1_x64-setup.exe",
-    "linux": "https://zip.1kko.com/desktop/Zip_0.5.1_amd64.AppImage"
+    "macos": "https://zip.1kko.com/desktop/Zip_0.5.2_universal.dmg",
+    "windows": "https://zip.1kko.com/desktop/Zip_0.5.2_x64-setup.exe",
+    "linux": "https://zip.1kko.com/desktop/Zip_0.5.2_amd64.AppImage"
   }
 }
