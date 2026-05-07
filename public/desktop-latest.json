@@ -1,10 +1,10 @@
 {
-  "version": "0.5.5",
+  "version": "0.5.6",
   "releasedAt": "2026-05-07",
   "notes": "",
   "downloads": {
-    "macos": "https://zip.1kko.com/desktop/Zip_0.5.5_universal.dmg",
-    "windows": "https://zip.1kko.com/desktop/Zip_0.5.5_x64-setup.exe",
-    "linux": "https://zip.1kko.com/desktop/Zip_0.5.5_amd64.AppImage"
+    "macos": "https://zip.1kko.com/desktop/Zip_0.5.6_universal.dmg",
+    "windows": "https://zip.1kko.com/desktop/Zip_0.5.6_x64-setup.exe",
+    "linux": "https://zip.1kko.com/desktop/Zip_0.5.6_amd64.AppImage"
   }
 }
