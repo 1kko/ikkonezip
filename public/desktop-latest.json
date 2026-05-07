@@ -1,10 +1,10 @@
 {
-  "version": "0.5.3",
+  "version": "0.5.4",
   "releasedAt": "2026-05-07",
-  "notes": "**Full Changelog**: https://github.com/1kko/ikkonezip/compare/v0.5.2-desktop...v0.5.3-desktop\n\n**Full Changelog**: https://github.com/1kko/ikkonezip/compare/v0.5.2-desktop...v0.5.3-desktop\n\n**Full Changelog**: https://github.com/1kko/ikkonezip/compare/v0.5.2-desktop...v0.5.3-desk",
+  "notes": "**Full Changelog**: https://github.com/1kko/ikkonezip/compare/v0.5.2-desktop...v0.5.4-desktop\n\n**Full Changelog**: https://github.com/1kko/ikkonezip/compare/v0.5.2-desktop...v0.5.4-desktop\n\n**Full Changelog**: https://github.com/1kko/ikkonezip/compare/v0.5.2-desktop...v0.5.4-desk",
   "downloads": {
-    "macos": "https://zip.1kko.com/desktop/Zip_0.5.3_universal.dmg",
-    "windows": "https://zip.1kko.com/desktop/Zip_0.5.3_x64-setup.exe",
-    "linux": "https://zip.1kko.com/desktop/Zip_0.5.3_amd64.AppImage"
+    "macos": "https://zip.1kko.com/desktop/Zip_0.5.4_universal.dmg",
+    "windows": "https://zip.1kko.com/desktop/Zip_0.5.4_x64-setup.exe",
+    "linux": "https://zip.1kko.com/desktop/Zip_0.5.4_amd64.AppImage"
   }
 }
