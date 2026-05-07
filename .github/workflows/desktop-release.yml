@@ -148,6 +148,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # actions: write is required for the "Trigger production deploy" step
+      # below — GITHUB_TOKEN needs this scope to dispatch deploy.yml via the
+      # workflow_dispatch API. Without it the call returns HTTP 403.
+      actions: write
     steps:
       - uses: actions/checkout@v6
         with:
