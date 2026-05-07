@@ -1,4 +1,5 @@
 import { BlobReader, BlobWriter, ZipReader } from '@zip.js/zip.js';
+import { decodeZipEntryFilename } from './decodeFilename';
 
 export interface ExtractedFile {
   file: File;
@@ -59,12 +60,18 @@ export async function extractZip(
 
     const blob = await entry.getData(new BlobWriter());
 
-    const filename = extractFilename(entry.filename);
+    const decodedEntryName = decodeZipEntryFilename(
+      entry.rawFilename,
+      entry.filenameUTF8,
+      entry.filename,
+    );
+
+    const filename = extractFilename(decodedEntryName);
     const extractedFile = new File([blob], filename, {
       lastModified: entry.lastModDate?.getTime(),
     });
 
-    const path = `${zipName}/${entry.filename}`;
+    const path = `${zipName}/${decodedEntryName}`;
     Object.defineProperty(extractedFile, 'webkitRelativePath', {
       value: path,
       writable: false,
