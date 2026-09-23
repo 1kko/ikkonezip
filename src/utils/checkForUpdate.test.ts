@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { checkForUpdate } from './checkForUpdate';
 
+const tauriFetch = vi.hoisted(() => vi.fn());
+vi.mock('@tauri-apps/plugin-http', () => ({ fetch: tauriFetch }));
+
 describe('checkForUpdate', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -52,6 +55,27 @@ describe('checkForUpdate', () => {
   it('returns null on non-2xx response', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('not found', { status: 404 }));
     expect(await checkForUpdate('1.0.0')).toBeNull();
+  });
+
+  it('fetches through the Tauri HTTP plugin inside the desktop app', async () => {
+    const globalFetch = vi.spyOn(globalThis, 'fetch');
+    tauriFetch.mockResolvedValue(
+      new Response(JSON.stringify({
+        version: '1.2.0',
+        downloadUrl: 'https://example.com/dmg',
+        notes: '',
+        releasedAt: '2026-04-22',
+      }))
+    );
+    window.__TAURI_INTERNALS__ = {};
+    try {
+      const result = await checkForUpdate('1.1.0');
+      expect(result?.version).toBe('1.2.0');
+      expect(tauriFetch).toHaveBeenCalledWith('https://zip.1kko.com/desktop-latest.json', { cache: 'no-cache' });
+      expect(globalFetch).not.toHaveBeenCalled();
+    } finally {
+      delete window.__TAURI_INTERNALS__;
+    }
   });
 
   it('returns null on malformed JSON', async () => {
