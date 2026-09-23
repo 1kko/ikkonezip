@@ -45,6 +45,16 @@ describe('useSettings', () => {
       expect(result.current.settings.normalizationForm).toBe('NFC');
     });
 
+    it('defaults datePrefixSingle to false so as-is downloads keep the original name', () => {
+      const { result } = renderHook(() => useSettings());
+      expect(result.current.settings.datePrefixSingle).toBe(false);
+    });
+
+    it('defaults datePrefixZip to true', () => {
+      const { result } = renderHook(() => useSettings());
+      expect(result.current.settings.datePrefixZip).toBe(true);
+    });
+
     it('returns default checkDesktopUpdates of true', () => {
       const { result } = renderHook(() => useSettings());
       expect(result.current.settings.checkDesktopUpdates).toBe(true);

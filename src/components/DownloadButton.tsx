@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, Archive, File, Loader2, Lock, Eye, EyeOff, Gauge, Trash2, Apple, Monitor } from 'lucide-react';
+import { Download, Archive, File, Loader2, Lock, Eye, EyeOff, Gauge, Trash2, Apple, Monitor, CalendarDays } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,15 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useSettings } from '@/hooks/useSettings';
-import type { ZipOptions } from '@/utils/zipFiles';
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { getDatePrefix, type ZipOptions } from '@/utils/zipFiles';
 
 interface DownloadButtonProps {
   fileCount: number;
   isProcessing: boolean;
   folderName: string | null;
   progress: { current: number; total: number } | null;
-  onDownloadZip: (filename: string, options?: ZipOptions) => Promise<void>;
-  onDownloadSingle: () => void;
+  onDownloadZip: (filename: string, options?: ZipOptions, addDatePrefix?: boolean) => Promise<void>;
+  onDownloadSingle: (addDatePrefix?: boolean) => void;
 }
 
 export function DownloadButton({
@@ -40,15 +41,28 @@ export function DownloadButton({
     }
   }, [folderName]);
 
-  if (fileCount === 0) {
-    return null;
-  }
-
   const isSingleFile = fileCount === 1;
+  const isRawSingle = isSingleFile && !settings.compressSingle;
+  const datePrefixKey = isRawSingle ? 'datePrefixSingle' : 'datePrefixZip';
+  const datePrefixEnabled = settings[datePrefixKey];
+
+  const datePrefixToggle = (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={datePrefixEnabled}
+        onChange={(e) => updateSetting(datePrefixKey, e.target.checked)}
+        className="w-4 h-4 rounded border-input accent-primary cursor-pointer"
+      />
+      <span className="text-sm text-muted-foreground">
+        파일명 앞에 날짜 붙이기 (예: {getDatePrefix()}파일명)
+      </span>
+    </label>
+  );
 
   const handleDownload = async () => {
-    if (isSingleFile && !settings.compressSingle) {
-      onDownloadSingle();
+    if (isRawSingle) {
+      onDownloadSingle(datePrefixEnabled);
     } else {
       const options: ZipOptions = {
         compressionLevel: settings.compressionLevel,
@@ -58,9 +72,23 @@ export function DownloadButton({
       if (password.trim()) {
         options.password = password.trim();
       }
-      await onDownloadZip(zipFilename, options);
+      await onDownloadZip(zipFilename, options, datePrefixEnabled);
     }
   };
+
+  // Enter runs the exact same download as the button so every choice made on
+  // screen (filename, password, mode, date prefix...) applies to it as well.
+  useKeyboardShortcuts({
+    enter: () => {
+      if (fileCount > 0 && !isProcessing) {
+        void handleDownload();
+      }
+    },
+  });
+
+  if (fileCount === 0) {
+    return null;
+  }
 
   return (
     <Card className="animate-fadeIn">
@@ -100,6 +128,10 @@ export function DownloadButton({
           </div>
         )}
 
+        {isRawSingle && (
+          <div className="flex justify-center">{datePrefixToggle}</div>
+        )}
+
         {/* ZIP options */}
         {(fileCount > 1 || settings.compressSingle) && (
           <div className="space-y-3">
@@ -117,6 +149,15 @@ export function DownloadButton({
                 placeholder="파일명.zip"
                 className="flex-1"
               />
+            </div>
+
+            {/* Date prefix */}
+            <div className="flex items-center gap-3">
+              <Label className="flex items-center gap-2 text-muted-foreground whitespace-nowrap w-16">
+                <CalendarDays className="w-4 h-4" />
+                날짜
+              </Label>
+              {datePrefixToggle}
             </div>
 
             {/* Password input */}
@@ -273,7 +314,7 @@ export function DownloadButton({
           ) : (
             <>
               <Download className="w-4 h-4" />
-              {isSingleFile && !settings.compressSingle
+              {isRawSingle
                 ? '정규화된 파일 다운로드'
                 : password.trim()
                   ? 'ZIP 다운로드 (암호화)'

@@ -708,6 +708,36 @@ describe('useFileProcessor', () => {
       expect(downloadBlob).toHaveBeenCalled();
     });
 
+    it('prefixes the ZIP filename with the date by default', async () => {
+      const { downloadBlob, getDatePrefix } = await import('@/utils/zipFiles');
+      vi.mocked(downloadBlob).mockClear();
+      const { result } = renderHook(() => useFileProcessor());
+
+      await act(async () => {
+        await result.current.addFiles([createMockFile('test.txt', 'content')]);
+      });
+      await act(async () => {
+        await result.current.downloadAsZip('output.zip');
+      });
+
+      expect(vi.mocked(downloadBlob).mock.calls[0][1]).toBe(`${getDatePrefix()}output.zip`);
+    });
+
+    it('omits the date prefix from the ZIP filename when addDatePrefix is false', async () => {
+      const { downloadBlob } = await import('@/utils/zipFiles');
+      vi.mocked(downloadBlob).mockClear();
+      const { result } = renderHook(() => useFileProcessor());
+
+      await act(async () => {
+        await result.current.addFiles([createMockFile('test.txt', 'content')]);
+      });
+      await act(async () => {
+        await result.current.downloadAsZip('output.zip', {}, false);
+      });
+
+      expect(vi.mocked(downloadBlob).mock.calls[0][1]).toBe('output.zip');
+    });
+
     it('handles non-Error throw in downloadAsZip', async () => {
       const zipFiles = await import('@/utils/zipFiles');
       const { result } = renderHook(() => useFileProcessor());
@@ -756,6 +786,36 @@ describe('useFileProcessor', () => {
       });
 
       expect(downloadSingleFile).toHaveBeenCalled();
+    });
+
+    it('keeps the original filename without a date prefix by default', async () => {
+      const { downloadSingleFile } = await import('@/utils/zipFiles');
+      vi.mocked(downloadSingleFile).mockClear();
+      const { result } = renderHook(() => useFileProcessor());
+
+      await act(async () => {
+        await result.current.addFiles([createMockFile('test.txt', 'content')]);
+      });
+      act(() => {
+        result.current.downloadSingle();
+      });
+
+      expect(vi.mocked(downloadSingleFile).mock.calls[0][1]).toBe('test.txt');
+    });
+
+    it('prefixes the filename with the date when addDatePrefix is true', async () => {
+      const { downloadSingleFile, getDatePrefix } = await import('@/utils/zipFiles');
+      vi.mocked(downloadSingleFile).mockClear();
+      const { result } = renderHook(() => useFileProcessor());
+
+      await act(async () => {
+        await result.current.addFiles([createMockFile('test.txt', 'content')]);
+      });
+      act(() => {
+        result.current.downloadSingle(true);
+      });
+
+      expect(vi.mocked(downloadSingleFile).mock.calls[0][1]).toBe(`${getDatePrefix()}test.txt`);
     });
   });
 

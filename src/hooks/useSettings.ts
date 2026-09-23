@@ -9,6 +9,13 @@ export interface Settings {
   compressSingle: boolean;
   normalizationForm: NormalizationForm;
   /**
+   * Prepend today's YYMMDD_ to the filename. Split per mode: an as-is single
+   * download is meant to keep the original name, so it defaults off; ZIPs
+   * are new artifacts where the date helps tell versions apart.
+   */
+  datePrefixSingle: boolean;
+  datePrefixZip: boolean;
+  /**
    * If true (default), the desktop app pings desktop-latest.json on launch
    * to surface a new-version toast. Web context ignores this setting entirely.
    */
@@ -26,6 +33,8 @@ const DEFAULT_SETTINGS: Settings = {
   excludeSystemFiles: true,
   compressSingle: true,
   normalizationForm: 'NFC',
+  datePrefixSingle: false,
+  datePrefixZip: true,
   checkDesktopUpdates: true,
   fullWidth: false,
 };

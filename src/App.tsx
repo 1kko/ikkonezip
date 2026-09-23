@@ -110,11 +110,6 @@ function App() {
       );
       input?.click();
     },
-    'enter': () => {
-      if (files.length > 0 && !isProcessing) {
-        void downloadAsZip();
-      }
-    },
     'escape': () => {
       if (needsPassword) {
         cancelZipPassword();
@@ -122,21 +117,21 @@ function App() {
         clearFiles();
       }
     },
-  }), [files.length, isProcessing, downloadAsZip, clearFiles, needsPassword, cancelZipPassword]);
+  }), [files.length, clearFiles, needsPassword, cancelZipPassword]);
 
   useKeyboardShortcuts(shortcuts);
 
   const [previewOpen, setPreviewOpen] = useState(false);
-  const pendingDownloadRef = useRef<{ zipFilename: string; options?: ZipOptions } | null>(null);
+  const pendingDownloadRef = useRef<{ zipFilename: string; options?: ZipOptions; addDatePrefix?: boolean } | null>(null);
 
-  const downloadWithPreview = async (zipFilename: string, options?: ZipOptions) => {
+  const downloadWithPreview = async (zipFilename: string, options?: ZipOptions, addDatePrefix?: boolean) => {
     const anyNeedsNormalization = files.some((f) => f.needsNormalization);
     if (anyNeedsNormalization) {
-      pendingDownloadRef.current = { zipFilename, options };
+      pendingDownloadRef.current = { zipFilename, options, addDatePrefix };
       setPreviewOpen(true);
       return;
     }
-    await downloadAsZip(zipFilename, options);
+    await downloadAsZip(zipFilename, options, addDatePrefix);
   };
 
   return (
@@ -220,7 +215,7 @@ function App() {
             setPreviewOpen(false);
             const args = pendingDownloadRef.current;
             pendingDownloadRef.current = null;
-            if (args) await downloadAsZip(args.zipFilename, args.options);
+            if (args) await downloadAsZip(args.zipFilename, args.options, args.addDatePrefix);
           }}
           onCancel={() => {
             setPreviewOpen(false);

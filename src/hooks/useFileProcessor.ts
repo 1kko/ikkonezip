@@ -26,8 +26,8 @@ export interface UseFileProcessorReturn {
   removeFiles: (ids: string[]) => void;
   renameFile: (id: string, newName: string) => void;
   clearFiles: () => void;
-  downloadAsZip: (zipFilename?: string, options?: ZipOptions) => Promise<void>;
-  downloadSingle: () => void;
+  downloadAsZip: (zipFilename?: string, options?: ZipOptions, addDatePrefix?: boolean) => Promise<void>;
+  downloadSingle: (addDatePrefix?: boolean) => void;
   submitZipPassword: (password: string) => Promise<void>;
   cancelZipPassword: () => void;
 }
@@ -220,7 +220,7 @@ export function useFileProcessor(): UseFileProcessorReturn {
     setError(null);
   }, []);
 
-  const downloadAsZip = useCallback(async (zipFilename: string = 'files.zip', options: ZipOptions = {}) => {
+  const downloadAsZip = useCallback(async (zipFilename: string = 'files.zip', options: ZipOptions = {}, addDatePrefix = true) => {
     if (files.length === 0) {
       setError('No files to download');
       return;
@@ -247,7 +247,7 @@ export function useFileProcessor(): UseFileProcessorReturn {
 
       // ZIP filename always normalized to NFC (user types on NFC keyboard;
       // the per-entry filenames inside the zip honor options.targetForm).
-      const datePrefix = getDatePrefix();
+      const datePrefix = addDatePrefix ? getDatePrefix() : '';
       const finalFilename = datePrefix + normalizeFilename(zipFilename);
 
       downloadBlob(zipBlob, finalFilename);
@@ -259,7 +259,7 @@ export function useFileProcessor(): UseFileProcessorReturn {
     }
   }, [files]);
 
-  const downloadSingle = useCallback(() => {
+  const downloadSingle = useCallback((addDatePrefix = false) => {
     if (files.length !== 1) {
       setError('downloadSingle requires exactly one file');
       return;
@@ -267,8 +267,7 @@ export function useFileProcessor(): UseFileProcessorReturn {
 
     const { file, normalizedName } = files[0];
 
-    // Add date prefix to filename
-    const datePrefix = getDatePrefix();
+    const datePrefix = addDatePrefix ? getDatePrefix() : '';
     const finalFilename = datePrefix + normalizedName;
 
     downloadSingleFile(file, finalFilename);
